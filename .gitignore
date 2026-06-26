@@ -33,3 +33,7 @@ backend/uploads/
 backend/zaytoun.db
 backend/backend.zip
 backend.zip
+
+# Allow backend/dist (compiled frontend served by FastAPI)
+!backend/dist
+!backend/dist/**
