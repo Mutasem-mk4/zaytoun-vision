@@ -1,17 +1,57 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, X, AlertCircle, ImagePlus } from 'lucide-react';
+import { UploadCloud, X, AlertCircle, ImagePlus, Sun, Zap } from 'lucide-react';
 import { predictImage } from '../api/client';
 import type { PredictionResult } from '../types';
 
 type UploadStatus = 'idle' | 'preview' | 'loading' | 'error';
+type LightingMode = 'uv' | 'blue' | 'flash';
+
+const MODES: {
+  id: LightingMode;
+  label: string;
+  sublabel: string;
+  icon: React.ReactNode;
+  confidence: string;
+  color: string;
+  selectedBg: string;
+}[] = [
+  {
+    id: 'uv',
+    label: '365 nm UV',
+    sublabel: 'Best accuracy',
+    icon: <Zap size={18} />,
+    confidence: 'High Confidence',
+    color: 'text-purple-700',
+    selectedBg: 'border-purple-500 bg-purple-50',
+  },
+  {
+    id: 'blue',
+    label: 'Blue Light',
+    sublabel: 'Medium accuracy',
+    icon: <Sun size={18} />,
+    confidence: 'Medium Confidence',
+    color: 'text-blue-600',
+    selectedBg: 'border-blue-500 bg-blue-50',
+  },
+  {
+    id: 'flash',
+    label: 'Flash / Daylight',
+    sublabel: 'Accessibility mode',
+    icon: <Sun size={18} />,
+    confidence: 'Lower Confidence',
+    color: 'text-amber-600',
+    selectedBg: 'border-amber-500 bg-amber-50',
+  },
+];
 
 export default function Analyze() {
-  const [status, setStatus]       = useState<UploadStatus>('idle');
-  const [file, setFile]           = useState<File | null>(null);
-  const [preview, setPreview]     = useState<string | null>(null);
-  const [error, setError]         = useState<string | null>(null);
+  const [status, setStatus]         = useState<UploadStatus>('idle');
+  const [file, setFile]             = useState<File | null>(null);
+  const [preview, setPreview]       = useState<string | null>(null);
+  const [error, setError]           = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [mode, setMode]             = useState<LightingMode>('uv');
 
   const inputRef  = useRef<HTMLInputElement>(null);
   const navigate  = useNavigate();
@@ -62,13 +102,7 @@ export default function Analyze() {
     setError(null);
 
     try {
-      const result: PredictionResult = await predictImage(file);
-      if (!result.valid) {
-        setError(result.error || 'Image too dark or out of focus. No UV fluorescence detected.');
-        setStatus('preview');
-        return;
-      }
-      // Persist to localStorage so Result page can read it
+      const result: PredictionResult = await predictImage(file, mode);
       localStorage.setItem('zaytoun_result', JSON.stringify(result));
       navigate('/result');
     } catch (err: unknown) {
@@ -90,7 +124,8 @@ export default function Analyze() {
       <div className="text-center mb-10">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Analyze your olive oil</h1>
         <p className="text-gray-500 text-sm max-w-sm mx-auto">
-          Upload a UV-light photo of your sample. The AI will extract fluorescence features and return a purity verdict.
+          Upload a UV-light photo of your sample. The AI will extract fluorescence features
+          and return a purity verdict in seconds.
         </p>
       </div>
 
@@ -102,7 +137,43 @@ export default function Analyze() {
         </div>
       )}
 
-      {/* Drop zone */}
+      {/* ── Lighting Mode Selector ── */}
+      <div className="mb-6 p-5 rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Step 1 — Select your lighting mode
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              id={`mode-${m.id}`}
+              onClick={() => setMode(m.id)}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 text-center cursor-pointer
+                ${mode === m.id
+                  ? `${m.selectedBg} shadow-sm`
+                  : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                }`}
+            >
+              <span className={mode === m.id ? m.color : 'text-gray-400'}>{m.icon}</span>
+              <span className={`text-xs font-bold ${mode === m.id ? m.color : 'text-gray-600'}`}>
+                {m.label}
+              </span>
+              <span className="text-[10px] text-gray-400 leading-tight">{m.sublabel}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-3 text-center">
+          {MODES.find((m) => m.id === mode)?.confidence} — algorithm thresholds adjust automatically
+        </p>
+      </div>
+
+      {/* ── Drop Zone ── */}
+      <div className="mb-1">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Step 2 — Upload your sample photo
+        </p>
+      </div>
+
       <div
         id="dropzone"
         role="button"
@@ -127,8 +198,8 @@ export default function Analyze() {
           id="file-upload"
         />
 
-        {/* Idle / dragging state */}
-        {(status === 'idle') && (
+        {/* Idle state */}
+        {status === 'idle' && (
           <div className="flex flex-col items-center justify-center gap-4 py-16 px-8 text-center">
             <div className="w-16 h-16 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-[#1D9E75]">
               <UploadCloud size={28} />
@@ -144,7 +215,7 @@ export default function Analyze() {
         )}
 
         {/* Preview state */}
-        {(status === 'preview') && preview && (
+        {status === 'preview' && preview && (
           <div className="p-6 flex flex-col items-center gap-5">
             <div className="relative group">
               <img
@@ -175,8 +246,8 @@ export default function Analyze() {
           <div className="flex flex-col items-center justify-center gap-4 py-16 px-8">
             <div className="w-14 h-14 rounded-full border-4 border-green-200 border-t-[#1D9E75] animate-spin" />
             <div className="text-center">
-              <p className="text-sm font-semibold text-gray-700">Analyzing UV fluorescence patterns...</p>
-              <p className="text-xs text-gray-400 mt-1">Applying low-cost CMOS spectrometer algorithms</p>
+              <p className="text-sm font-semibold text-gray-700">Analyzing UV fluorescence patterns…</p>
+              <p className="text-xs text-gray-400 mt-1">Running {MODES.find((m) => m.id === mode)?.label} pipeline</p>
             </div>
           </div>
         )}
@@ -203,49 +274,43 @@ export default function Analyze() {
         </div>
       )}
 
-      {/* Scientific Image Processing Pipeline */}
+      {/* Scientific pipeline info */}
       <div className="mt-8 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">🔬 Scientific UV Preprocessing Pipeline</h3>
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-          {/* Node 1 */}
           <div className="flex items-center justify-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-600 w-full md:w-auto text-center">
             📸 Your Captured Photo
           </div>
-          {/* Arrow */}
           <div className="hidden md:block text-gray-300 font-bold">──➔</div>
           <div className="md:hidden text-gray-300 font-bold">⬇</div>
-          {/* Node 2 */}
           <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg font-medium text-green-700 w-full md:w-auto">
             <span className="w-2.5 h-2.5 rounded bg-green-500 flex-shrink-0" />
-            <span><strong>Step 1:</strong> Crop to Liquid Layer</span>
+            <span><strong>Step 1:</strong> Crop Liquid ROI (10–90% margin)</span>
           </div>
-          {/* Arrow */}
           <div className="hidden md:block text-gray-300 font-bold">──➔</div>
           <div className="md:hidden text-gray-300 font-bold">⬇</div>
-          {/* Node 3 */}
           <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg font-medium text-red-700 w-full md:w-auto">
             <span className="w-2.5 h-2.5 rounded bg-red-500 flex-shrink-0" />
-            <span><strong>Step 2:</strong> Mask for Red Pixels</span>
+            <span><strong>Step 2:</strong> Threshold Mask (≥50 brightness)</span>
           </div>
-          {/* Arrow */}
           <div className="hidden md:block text-gray-300 font-bold">──➔</div>
           <div className="md:hidden text-gray-300 font-bold">⬇</div>
-          {/* Node 4 */}
           <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg font-medium text-blue-700 w-full md:w-auto">
-            <span className="flex-shrink-0 font-bold text-[10px] bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center">123</span>
-            <span><strong>Step 3:</strong> Compute Mean Values</span>
+            <span className="flex-shrink-0 font-bold text-[10px] bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center">μ</span>
+            <span><strong>Step 3:</strong> RGB Mean → 0–1000 Counts</span>
           </div>
         </div>
       </div>
 
       {/* Tips */}
-      <div className="mt-8 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
+      <div className="mt-6 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">📸 Tips for best results</h3>
         <ul className="space-y-2 text-xs text-gray-500">
-          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span> Use a 365 nm UV lamp for optimal fluorescence.</li>
-          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span> Place the sample inside a darkbox to isolate the UV signal.</li>
-          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span> Center the vial/bottle in the smartphone camera frame.</li>
-          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span> Ensure the camera focus is sharp on the liquid layer.</li>
+          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span>Use a 365 nm UV lamp for the highest accuracy (UV mode).</li>
+          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span>Place the sample inside a darkbox to isolate the UV fluorescence signal.</li>
+          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span>Center the vial or bottle in the smartphone camera frame.</li>
+          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span>Ensure the camera focus is sharp on the liquid layer.</li>
+          <li className="flex items-start gap-2"><span className="text-[#1D9E75] font-bold mt-0.5">•</span>If UV is unavailable, select Flash/Daylight mode — accuracy is lower but still useful.</li>
         </ul>
       </div>
     </div>

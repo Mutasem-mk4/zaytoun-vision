@@ -7,7 +7,7 @@ from typing import Any
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -110,57 +110,103 @@ def fetch_history(limit: int = 20) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Scientific UV Pipeline
 # ---------------------------------------------------------------------------
-
-def detect_fraud(norm_R: float, norm_G: float, norm_B: float) -> dict:
+def detect_fraud(norm_R: float, norm_G: float, norm_B: float, mode: str = "uv") -> dict:
     """
     AI Stage 1: Fraud Detection Logic Matrix.
-    Calibrated for smartphone CMOS sensors under 365nm UV inside a darkbox.
-    Accounts for blue LED leakage/reflections and camera exposure compression.
-
-    Channel mapping:
-      Red   → 670-680 nm  → Chlorophyll indicator
-      Green → 525-550 nm  → Antioxidants / Phenols / Vitamin E
-      Blue  → 430-450 nm  → Oxidation / Industrial refining marker
+    Calibrated for three tiered confidence/accessibility modes.
     """
-    # Authentic EVOO: strong Red (chlorophyll), moderate Green, low-medium Blue (due to reflection)
-    if norm_R > 400 and norm_G > 150 and norm_B < 380 and norm_R > norm_B:
-        confidence = min(
-            100.0,
-            round(((norm_R - 400) / 600 * 50) + ((380 - norm_B) / 380 * 50), 1),
-        )
-        return {
-            "passed":     True,
-            "verdict":    "authentic_evoo",
-            "label":      "Authentic EVOO",
-            "message":    "Strong chlorophyll fluorescence detected. Passes fraud check.",
-            "confidence": confidence,
-        }
+    if mode == "uv":
+        # Authentic EVOO: strong Red (chlorophyll), moderate Green, low-medium Blue (due to reflection)
+        if norm_R > 400 and norm_G > 150 and norm_B < 380 and norm_R > norm_B:
+            confidence = min(
+                100.0,
+                round(((norm_R - 400) / 600 * 50) + ((380 - norm_B) / 380 * 50), 1),
+            )
+            return {
+                "passed":     True,
+                "verdict":    "authentic_evoo",
+                "label":      "Authentic EVOO (UV Mode)",
+                "message":    "Strong chlorophyll fluorescence detected. Passes fraud check.",
+                "confidence": confidence,
+            }
 
-    # Industrial seed oil: low Red & Green, dominant Blue (no chlorophyll)
-    if norm_R < 120 and norm_G < 120 and norm_B > 450:
-        return {
-            "passed":     False,
-            "verdict":    "industrial_seed_oil",
-            "label":      "Industrial Seed Oil — Fraud Detected",
-            "message":    (
-                "Blue channel dominance detected. No chlorophyll. "
-                "Consistent with canola, soy, sunflower, or corn oil."
-            ),
-            "confidence": min(100.0, round(norm_B / 10, 1)),
-        }
+        # Industrial seed oil: low Red & Green, dominant Blue (no chlorophyll)
+        if norm_R < 120 and norm_G < 120 and norm_B > 450:
+            return {
+                "passed":     False,
+                "verdict":    "industrial_seed_oil",
+                "label":      "Industrial Seed Oil — Fraud Detected",
+                "message":    (
+                    "Blue channel dominance detected under UV. No chlorophyll. "
+                    "Consistent with canola, soy, sunflower, or corn oil."
+                ),
+                "confidence": min(100.0, round(norm_B / 10, 1)),
+            }
 
-    # Adulterated blend: chlorophyll present BUT abnormally high Blue (exceeding EVOO reflection floor)
-    if norm_R > 350 and norm_G > 150 and norm_B >= 380:
-        return {
-            "passed":     False,
-            "verdict":    "adulterated_blend",
-            "label":      "Adulterated Blend — Fraud Detected",
-            "message":    (
-                "Abnormally high blue channel alongside chlorophyll signal. "
-                "Possible artificial chlorophyll coloring added to seed oil."
-            ),
-            "confidence": min(100.0, round(norm_B / 10, 1)),
-        }
+        # Adulterated blend: chlorophyll present BUT abnormally high Blue (exceeding EVOO reflection floor)
+        if norm_R > 350 and norm_G > 150 and norm_B >= 380:
+            return {
+                "passed":     False,
+                "verdict":    "adulterated_blend",
+                "label":      "Adulterated Blend — Fraud Detected",
+                "message":    (
+                    "Abnormally high blue channel alongside chlorophyll signal under UV. "
+                    "Possible artificial coloring added to seed oil."
+                ),
+                "confidence": min(100.0, round(norm_B / 10, 1)),
+            }
+            
+    elif mode == "blue":
+        # Blue light excitation (medium confidence)
+        ratio_GB = norm_G / (norm_B + 1e-6)
+        if norm_R > 250 and ratio_GB > 1.35 and norm_B < 480:
+            return {
+                "passed":     True,
+                "verdict":    "authentic_evoo",
+                "label":      "Authentic EVOO (Blue Light Mode)",
+                "message":    "Expected blue absorption with green/red fluorescence signature under blue excitation.",
+                "confidence": 75.0,
+            }
+        elif norm_B > 480 and ratio_GB < 1.15:
+            return {
+                "passed":     False,
+                "verdict":    "industrial_seed_oil",
+                "label":      "Industrial Seed Oil — Fraud Detected (Blue Mode)",
+                "message":    "Dominant blue reflection and minimal green/red absorption. Consistent with seed oil.",
+                "confidence": 80.0,
+            }
+        else:
+            return {
+                "passed":     False,
+                "verdict":    "adulterated_blend",
+                "label":      "Adulterated Blend — Fraud Detected (Blue Mode)",
+                "message":    "Atypical spectral ratio under blue excitation. Possible adulteration.",
+                "confidence": 70.0,
+            }
+            
+    else:  # mode == "flash" / daylight
+        # Flash / Daylight Mode (low confidence accessibility mode)
+        ratio_GB = norm_G / (norm_B + 1e-6)
+        ratio_RB = norm_R / (norm_B + 1e-6)
+        
+        # EVOO has G/B > 1.95 and R/B > 2.25 (strong blue absorption relative to green/red)
+        if ratio_GB > 1.95 and ratio_RB > 2.25:
+            return {
+                "passed":     True,
+                "verdict":    "authentic_evoo",
+                "label":      "Authentic EVOO (Flash/Daylight)",
+                "message":    "Expected chlorophyll-induced blue absorption profile under white light.",
+                "confidence": 60.0,
+            }
+        # Seed oils have weak blue absorption (G/B < 1.95 or R/B < 2.25)
+        else:
+            return {
+                "passed":     False,
+                "verdict":    "industrial_seed_oil",
+                "label":      "Industrial Seed Oil — Fraud Detected",
+                "message":    "Weak blue light absorption profile. Consistent with yellow seed oils (soy, corn, canola).",
+                "confidence": 65.0,
+            }
 
     # Borderline / inconclusive pattern
     return {
@@ -168,8 +214,8 @@ def detect_fraud(norm_R: float, norm_G: float, norm_B: float) -> dict:
         "verdict":    "inconclusive",
         "label":      "Inconclusive — Retest Required",
         "message":    (
-            "Signal does not match known patterns. "
-            "Retake image under controlled darkbox conditions."
+            "Signal does not match known patterns for the selected lighting mode. "
+            "Retake under controlled conditions."
         ),
         "confidence": 0,
     }
@@ -221,9 +267,9 @@ def grade_quality(norm_R: float, norm_G: float, norm_B: float) -> dict:
     }
 
 
-def preprocess_and_extract(img_bgr: np.ndarray) -> dict:
+def preprocess_and_extract(img_bgr: np.ndarray, mode: str = "uv") -> dict:
     """
-    Full scientific UV fluorescence pipeline.
+    Full scientific UV/Light fluorescence pipeline.
     Returns dict with all channels, normalized counts, fraud result, quality grade.
     """
     h, w = img_bgr.shape[:2]
@@ -244,7 +290,7 @@ def preprocess_and_extract(img_bgr: np.ndarray) -> dict:
         return {
             "error": (
                 "Image too dark or out of focus. "
-                "No UV fluorescence detected."
+                "No valid sample fluorescence detected."
             ),
             "valid": False,
         }
@@ -261,7 +307,7 @@ def preprocess_and_extract(img_bgr: np.ndarray) -> dict:
     norm_B = (raw_B / 255.0) * 1000   # Oxidation marker @ 430-450 nm
 
     # STEP 6: AI Stage 1 — Fraud Detection
-    fraud_result = detect_fraud(norm_R, norm_G, norm_B)
+    fraud_result = detect_fraud(norm_R, norm_G, norm_B, mode)
 
     # STEP 7: AI Stage 2 — Quality grading (only if fraud check passed)
     quality_result = grade_quality(norm_R, norm_G, norm_B) if fraud_result["passed"] else None
@@ -319,7 +365,7 @@ async def eem_features():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...), mode: str = Form("uv")):
     # Validate content type
     if file.content_type not in ("image/jpeg", "image/png", "image/jpg"):
         raise HTTPException(status_code=400, detail="Only JPG and PNG images are supported.")
@@ -333,7 +379,7 @@ async def predict(file: UploadFile = File(...)):
 
     # Run UV pipeline
     try:
-        result = preprocess_and_extract(img)
+        result = preprocess_and_extract(img, mode)
     except Exception as exc:
         logger.error(f"Pipeline error: {exc}")
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {exc}")

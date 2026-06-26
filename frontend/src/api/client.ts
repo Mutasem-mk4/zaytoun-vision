@@ -10,10 +10,16 @@ const api = axios.create({
 
 /**
  * Upload an image and get a prediction result.
+ * @param file  - The UV image file
+ * @param mode  - Lighting mode: 'uv' | 'blue' | 'flash'
  */
-export async function predictImage(file: File): Promise<PredictionResult> {
+export async function predictImage(
+  file: File,
+  mode: 'uv' | 'blue' | 'flash' = 'uv',
+): Promise<PredictionResult> {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('mode', mode);
 
   const response = await api.post<PredictionResult>('/predict', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -41,8 +47,7 @@ export async function fetchEemFeatures(): Promise<EemFeatureRecord[]> {
 /**
  * Health check.
  */
-export async function checkHealth(): Promise<{ status: string; model: string }> {
-  const response = await api.get<{ status: string; model: string }>('/health');
+export async function checkHealth(): Promise<{ status: string }> {
+  const response = await api.get<{ status: string }>('/health');
   return response.data;
 }
-
