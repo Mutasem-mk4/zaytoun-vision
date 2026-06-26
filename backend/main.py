@@ -1,22 +1,24 @@
 import os
-import io
-import sqlite3
-import pickle
-import logging
 import csv
+import sqlite3
+import logging
 from datetime import datetime
 from typing import Any
+
 import cv2
 import numpy as np
-from scipy.stats import skew
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Zaytoun Vision API", version="1.0.0")
+app = FastAPI(title="Zaytoun Vision API v2 — Scientific UV Pipeline", version="2.0.0")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,65 +27,76 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
-DB_PATH    = os.path.join(BASE_DIR, "zaytoun.db")
-EEM_PATH   = os.path.join(BASE_DIR, "eem_features.csv")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH  = os.path.join(BASE_DIR, "zaytoun.db")
+EEM_PATH = os.path.join(BASE_DIR, "eem_features.csv")
 
-_model = None
-def load_model():
-    global _model
-    if _model is not None:
-        return _model
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"model.pkl not found at {MODEL_PATH}")
-    with open(MODEL_PATH, "rb") as f:
-        _model = pickle.load(f)
-    logger.info("Model loaded successfully.")
-    return _model
-
-def get_db():
+# ---------------------------------------------------------------------------
+# SQLite helpers
+# ---------------------------------------------------------------------------
+def get_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+
+def init_db() -> None:
     conn = get_db()
-    conn.cursor().execute(
+    conn.execute(
         """
         CREATE TABLE IF NOT EXISTS predictions (
-            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename               TEXT,
-            label                  TEXT,
-            confidence             REAL,
-            purity_score           INTEGER,
-            adulteration_pct       INTEGER,
-            risk_level             TEXT,
-            fluorescence_intensity REAL,
-            recommendation         TEXT,
-            timestamp              TEXT
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename        TEXT,
+            verdict         TEXT,
+            label           TEXT,
+            confidence      REAL,
+            purity_index    REAL,
+            aging_step      INTEGER,
+            grade           TEXT,
+            red_670nm       REAL,
+            green_530nm     REAL,
+            blue_440nm      REAL,
+            nonzero_pixels  INTEGER,
+            timestamp       TEXT
         )
         """
     )
     conn.commit()
     conn.close()
+    logger.info("Database initialised.")
+
 
 init_db()
 
-def save_prediction(filename, label, confidence, purity_score,
-                    adulteration_pct, risk_level, fluorescence_intensity,
-                    recommendation, timestamp):
+
+def save_prediction(
+    filename: str,
+    verdict: str,
+    label: str,
+    confidence: float,
+    purity_index: float | None,
+    aging_step: int | None,
+    grade: str | None,
+    red_670nm: float,
+    green_530nm: float,
+    blue_440nm: float,
+    nonzero_pixels: int,
+    timestamp: str,
+) -> None:
     conn = get_db()
     conn.execute(
-        """INSERT INTO predictions
-           (filename,label,confidence,purity_score,adulteration_pct,
-            risk_level,fluorescence_intensity,recommendation,timestamp)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
-        (filename, label, confidence, purity_score, adulteration_pct,
-         risk_level, fluorescence_intensity, recommendation, timestamp),
+        """
+        INSERT INTO predictions
+            (filename, verdict, label, confidence, purity_index, aging_step,
+             grade, red_670nm, green_530nm, blue_440nm, nonzero_pixels, timestamp)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """,
+        (filename, verdict, label, confidence, purity_index, aging_step,
+         grade, red_670nm, green_530nm, blue_440nm, nonzero_pixels, timestamp),
     )
     conn.commit()
     conn.close()
+
 
 def fetch_history(limit: int = 20) -> list[dict[str, Any]]:
     conn = get_db()
@@ -93,233 +106,260 @@ def fetch_history(limit: int = 20) -> list[dict[str, Any]]:
     conn.close()
     return [dict(row) for row in rows]
 
-# ---------------------------------------------------------------------------
-# Preprocessing
-# ---------------------------------------------------------------------------
-def white_balance_gray_world(img):
-    f = img.astype(np.float32)
-    avg_b, avg_g, avg_r = np.mean(f[:,:,0]), np.mean(f[:,:,1]), np.mean(f[:,:,2])
-    avg = (avg_b + avg_g + avg_r) / 3.0
-    f[:,:,0] = np.clip(f[:,:,0] * (avg / avg_b), 0, 255)
-    f[:,:,1] = np.clip(f[:,:,1] * (avg / avg_g), 0, 255)
-    f[:,:,2] = np.clip(f[:,:,2] * (avg / avg_r), 0, 255)
-    return f.astype(np.uint8)
-
-def crop_center_roi(img, margin=0.2):
-    h, w = img.shape[:2]
-    return img[int(h*margin):int(h*(1-margin)), int(w*margin):int(w*(1-margin))]
-
-def apply_clahe(img):
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    lab[:,:,0] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(lab[:,:,0])
-    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-def preprocess(img):
-    img = white_balance_gray_world(img)
-    img = crop_center_roi(img, 0.2)
-    img = cv2.resize(img, (224, 224))
-    img = apply_clahe(img)
-    img = cv2.GaussianBlur(img, (3,3), 0)
-    return img
 
 # ---------------------------------------------------------------------------
-# Feature extraction
+# Scientific UV Pipeline
 # ---------------------------------------------------------------------------
-def extract_features(img) -> dict:
-    b = img[:,:,0].flatten().astype(np.float64)
-    g = img[:,:,1].flatten().astype(np.float64)
-    r = img[:,:,2].flatten().astype(np.float64)
 
-    hsv  = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lab  = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def detect_fraud(norm_R: float, norm_G: float, norm_B: float) -> dict:
+    """
+    AI Stage 1: Fraud Detection Logic Matrix.
+    Uses exact scientific thresholds derived from UV fluorescence physics.
 
-    hist, _ = np.histogram(gray.flatten(), bins=256, range=(0,256))
-    hp = hist / float(hist.sum() + 1e-6)
-    hp = hp[hp > 0]
+    Channel mapping:
+      Red   → 670-680 nm  → Chlorophyll indicator
+      Green → 525-550 nm  → Antioxidants / Phenols / Vitamin E
+      Blue  → 430-450 nm  → Oxidation / Industrial refining marker
+    """
+    # Authentic EVOO: strong Red (chlorophyll), moderate Green, low Blue
+    if norm_R > 600 and norm_G > 250 and norm_B < 150:
+        confidence = min(
+            100.0,
+            round(((norm_R - 600) / 400 * 50) + ((250 - norm_B) / 250 * 50), 1),
+        )
+        return {
+            "passed":     True,
+            "verdict":    "authentic_evoo",
+            "label":      "Authentic EVOO",
+            "message":    "Strong chlorophyll fluorescence detected. Passes fraud check.",
+            "confidence": confidence,
+        }
 
+    # Industrial seed oil: near-zero Red & Green, dominant Blue (no chlorophyll)
+    if norm_R < 50 and norm_G < 50 and norm_B > 600:
+        return {
+            "passed":     False,
+            "verdict":    "industrial_seed_oil",
+            "label":      "Industrial Seed Oil — Fraud Detected",
+            "message":    (
+                "Blue channel dominance detected. No chlorophyll. "
+                "Consistent with canola, soy, sunflower, or corn oil."
+            ),
+            "confidence": round(norm_B / 10, 1),
+        }
+
+    # Adulterated blend: chlorophyll present BUT abnormally high Blue
+    if norm_R > 500 and norm_G > 200 and norm_B > 300:
+        return {
+            "passed":     False,
+            "verdict":    "adulterated_blend",
+            "label":      "Adulterated Blend — Fraud Detected",
+            "message":    (
+                "Abnormally high blue channel alongside chlorophyll signal. "
+                "Possible artificial chlorophyll coloring added to seed oil."
+            ),
+            "confidence": round(norm_B / 10, 1),
+        }
+
+    # Borderline / inconclusive pattern
     return {
-        "rgb_B_mean": float(np.mean(b)), "rgb_B_std": float(np.std(b)), "rgb_B_skew": float(skew(b)),
-        "rgb_G_mean": float(np.mean(g)), "rgb_G_std": float(np.std(g)), "rgb_G_skew": float(skew(g)),
-        "rgb_R_mean": float(np.mean(r)), "rgb_R_std": float(np.std(r)), "rgb_R_skew": float(skew(r)),
-        "hsv_H_mean": float(np.mean(hsv[:,:,0])), "hsv_H_std": float(np.std(hsv[:,:,0])),
-        "hsv_S_mean": float(np.mean(hsv[:,:,1])), "hsv_S_std": float(np.std(hsv[:,:,1])),
-        "hsv_V_mean": float(np.mean(hsv[:,:,2])), "hsv_V_std": float(np.std(hsv[:,:,2])),
-        "lab_L_mean": float(np.mean(lab[:,:,0])), "lab_L_std": float(np.std(lab[:,:,0])),
-        "lab_A_mean": float(np.mean(lab[:,:,1])), "lab_A_std": float(np.std(lab[:,:,1])),
-        "lab_B_mean": float(np.mean(lab[:,:,2])), "lab_B_std": float(np.std(lab[:,:,2])),
-        "fluorescence_intensity": float((np.mean(b) + np.mean(g)) / 2.0),
-        "fluorescence_ratio":     float(np.mean(g) / (np.mean(r) + 1e-6)),
-        "texture_entropy":        float(-np.sum(hp * np.log2(hp))),
-        "brightness_mean":        float(np.mean(gray.astype(np.float64))),
-        "brightness_std":         float(np.std(gray.astype(np.float64))),
+        "passed":     False,
+        "verdict":    "inconclusive",
+        "label":      "Inconclusive — Retest Required",
+        "message":    (
+            "Signal does not match known patterns. "
+            "Retake image under controlled darkbox conditions."
+        ),
+        "confidence": 0,
     }
 
-# ---------------------------------------------------------------------------
-# smart_predict — النسخة المحدّثة المبنية على فيزياء UV الصحيحة
-# ---------------------------------------------------------------------------
-def smart_predict(features: dict) -> dict:
+
+def grade_quality(norm_R: float, norm_G: float, norm_B: float) -> dict:
     """
-    زيت زيتون نقي تحت UV:
-      - لون أصفر ذهبي  → R عالي، B منخفض  (yellow_signal موجب)
-      - وميض أحمر/وردي من الكلوروفيل
-      - Saturation عالي (ملوّن مش أبيض/رمادي)
-      - LAB B* عالي    → أصفر
-      - Fluorescence intensity متوسط-عالي
-
-    زيت مغشوش أو زيت نباتي عادي تحت UV:
-      - لون أبيض/رمادي باهت → saturation منخفض
-      - لا يوجد وميض كلوروفيل
+    AI Stage 2: Purity Index and Degradation Grading.
+    Formula: Purity_Index = (Red / (Red + Blue)) × 100
+    Only called when the oil passes Stage 1 fraud detection.
     """
-    g_mean  = features.get('rgb_G_mean', 128)
-    r_mean  = features.get('rgb_R_mean', 128)
-    b_mean  = features.get('rgb_B_mean', 128)
-    s_mean  = features.get('hsv_S_mean', 50)
-    fluor   = features.get('fluorescence_intensity', 100)
-    entropy = features.get('texture_entropy', 6.0)
-    lab_b   = features.get('lab_B_mean', 128)
-    fluor_r = features.get('fluorescence_ratio', 1.0)
+    purity_index = (norm_R / (norm_R + norm_B + 1e-6)) * 100
 
-    score = 50.0
-
-    # 1. Saturation — أهم مؤشر (زيت نقي = ملوّن، مغشوش = باهت)
-    score += float(np.clip((s_mean - 60) * 0.40, -20, 25))
-
-    # 2. Yellow signal (R - B) — زيت زيتون نقي أصفر ذهبي
-    yellow_signal = r_mean - b_mean
-    score += float(np.clip(yellow_signal * 0.15, -15, 20))
-
-    # 3. LAB B* — أصفر = موجب، أزرق = سالب
-    score += float(np.clip((lab_b - 128) * 0.30, -10, 10))
-
-    # 4. Fluorescence intensity — وميض UV
-    score += float(np.clip((fluor - 80) * 0.15, -10, 10))
-
-    # 5. Texture entropy — زيت نقي فيه texture طبيعي أكثر
-    score += float(np.clip((entropy - 5.5) * 4.0, -5, 5))
-
-    # 6. Green/Red ratio — كلوروفيل يزيد الأخضر نسبياً
-    score += float(np.clip((fluor_r - 0.9) * 8.0, -5, 5))
-
-    score = float(np.clip(score, 5, 97))
-
-    label      = 'pure' if score >= 55 else 'adulterated'
-    confidence = round(score if label == 'pure' else (100 - score), 2)
-    adult_pct  = max(0, int(100 - score))
-
-    if label == 'pure' and confidence > 75:
-        risk = 'low'
-    elif label == 'pure':
-        risk = 'medium'
+    if purity_index >= 95:
+        step        = 0
+        grade       = "Premium Fresh Extra Virgin"
+        description = "Peak freshness. Maximum chlorophyll and antioxidant content."
+        color       = "green"
+    elif purity_index >= 75:
+        step        = 2
+        grade       = "Excellent to Medium Quality"
+        description = "Normal degradation. Slight oxidation. Still high quality."
+        color       = "green"
+    elif purity_index >= 45:
+        step        = 5
+        grade       = "Old / Low Quality Oil"
+        description = (
+            "Significant loss of phenols and antioxidants. "
+            "Not ideal for consumption."
+        )
+        color       = "yellow"
     else:
-        risk = 'high'
-
-    recommendation = (
-        "Strong UV fluorescence with golden-yellow color detected — "
-        "consistent with authentic extra-virgin olive oil."
-        if label == 'pure' else
-        "Weak or absent chlorophyll fluorescence. "
-        "Possible adulteration with refined or seed oil."
-    )
+        step        = 8
+        grade       = "Spoiled / Expired / Heat-Damaged"
+        description = (
+            "Chlorophyll completely degraded. Massive oxidation. "
+            "Unsafe for consumption."
+        )
+        color       = "red"
 
     return {
-        'label':                  label,
-        'confidence':             confidence,
-        'purity_score':           int(score),
-        'adulteration_pct':       adult_pct,
-        'risk_level':             risk,
-        'fluorescence_intensity': round(fluor, 2),
-        'top_features': {
-            'saturation':     round(s_mean, 3),
-            'yellow_signal':  round(yellow_signal, 3),
-            'lab_B_mean':     round(lab_b, 3),
-        },
-        'recommendation': recommendation,
+        "purity_index":      round(purity_index, 2),
+        "aging_step":        step,
+        "grade":             grade,
+        "description":       description,
+        "color":             color,
+        "green_phenols":     round(norm_G, 2),
+        "oxidation_marker":  round(norm_B, 2),
     }
+
+
+def preprocess_and_extract(img_bgr: np.ndarray) -> dict:
+    """
+    Full scientific UV fluorescence pipeline.
+    Returns dict with all channels, normalized counts, fraud result, quality grade.
+    """
+    h, w = img_bgr.shape[:2]
+
+    # STEP 1: Dynamic ROI — remove reflections and background borders
+    roi = img_bgr[
+        int(h * 0.15): int(h * 0.90),
+        int(w * 0.10): int(w * 0.90),
+    ]
+
+    # STEP 2: Grayscale + binary mask at threshold 50
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
+
+    # STEP 3: Error check — completely dark or out-of-focus image
+    nonzero_pixels = int(np.count_nonzero(mask))
+    if nonzero_pixels < 100:
+        return {
+            "error": (
+                "Image too dark or out of focus. "
+                "No UV fluorescence detected."
+            ),
+            "valid": False,
+        }
+
+    # STEP 4: Extract masked pixel means per channel
+    mask_bool = mask > 0
+    raw_R = float(np.mean(roi[:, :, 2][mask_bool]))  # Red   → 670 nm
+    raw_G = float(np.mean(roi[:, :, 1][mask_bool]))  # Green → 530 nm
+    raw_B = float(np.mean(roi[:, :, 0][mask_bool]))  # Blue  → 440 nm
+
+    # STEP 5: Normalize 0-255 → 0-1000 counts (linear × 3.92157)
+    norm_R = (raw_R / 255.0) * 1000   # Chlorophyll @ 670-680 nm
+    norm_G = (raw_G / 255.0) * 1000   # Antioxidants @ 525-550 nm
+    norm_B = (raw_B / 255.0) * 1000   # Oxidation marker @ 430-450 nm
+
+    # STEP 6: AI Stage 1 — Fraud Detection
+    fraud_result = detect_fraud(norm_R, norm_G, norm_B)
+
+    # STEP 7: AI Stage 2 — Quality grading (only if fraud check passed)
+    quality_result = grade_quality(norm_R, norm_G, norm_B) if fraud_result["passed"] else None
+
+    return {
+        "valid":             True,
+        "raw":               {"R": round(raw_R, 2), "G": round(raw_G, 2), "B": round(raw_B, 2)},
+        "normalized_counts": {
+            "red_670nm":    round(norm_R, 2),
+            "green_530nm":  round(norm_G, 2),
+            "blue_440nm":   round(norm_B, 2),
+        },
+        "fraud_detection":   fraud_result,
+        "quality_grading":   quality_result,
+        "nonzero_pixels":    nonzero_pixels,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": "loaded" if os.path.exists(MODEL_PATH) else "not found"}
+    return {"status": "ok"}
+
 
 @app.get("/history")
 async def history():
     return fetch_history(20)
 
+
 @app.get("/eem-features")
 async def eem_features():
     if not os.path.exists(EEM_PATH):
-        raise HTTPException(status_code=404, detail="eem_features.csv not found")
-    data = []
+        raise HTTPException(status_code=404, detail="eem_features.csv not found.")
+    data: list[dict] = []
     try:
         with open(EEM_PATH, "r", encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 data.append({
-                    "eem_mean":          float(row.get("eem_mean", 0)),
-                    "eem_max":           float(row.get("eem_max", 0)),
-                    "eem_std":           float(row.get("eem_std", 0)),
-                    "chlorophyll_mean":  float(row.get("chlorophyll_mean", 0)),
-                    "chlorophyll_max":   float(row.get("chlorophyll_max", 0)),
-                    "chlorophyll_ratio": float(row.get("chlorophyll_ratio", 0)),
-                    "aging_step":        int(row.get("aging_step", 0)),
+                    "eem_mean":          float(row.get("eem_mean", 0) or 0),
+                    "eem_max":           float(row.get("eem_max", 0) or 0),
+                    "eem_std":           float(row.get("eem_std", 0) or 0),
+                    "chlorophyll_mean":  float(row.get("chlorophyll_mean", 0) or 0),
+                    "chlorophyll_max":   float(row.get("chlorophyll_max", 0) or 0),
+                    "chlorophyll_ratio": float(row.get("chlorophyll_ratio", 0) or 0),
+                    "aging_step":        int(row.get("aging_step", 0) or 0),
                     "filename":          row.get("filename", ""),
                 })
     except Exception as exc:
+        logger.error(f"EEM read error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
     return data
 
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    # Validate content type
     if file.content_type not in ("image/jpeg", "image/png", "image/jpg"):
-        raise HTTPException(status_code=400, detail="Only JPG and PNG supported.")
+        raise HTTPException(status_code=400, detail="Only JPG and PNG images are supported.")
 
+    # Decode image
     raw_bytes = await file.read()
-    img = cv2.imdecode(np.frombuffer(raw_bytes, np.uint8), cv2.IMREAD_COLOR)
+    np_arr = np.frombuffer(raw_bytes, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail="Could not decode image.")
 
+    # Run UV pipeline
     try:
-        img = preprocess(img)
+        result = preprocess_and_extract(img)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Preprocessing failed: {exc}")
-
-    try:
-        features = extract_features(img)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Feature extraction failed: {exc}")
-
-    try:
-        prediction = smart_predict(features)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}")
+        logger.error(f"Pipeline error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Pipeline failed: {exc}")
 
     timestamp = datetime.utcnow().isoformat()
 
+    # Save to database
     try:
+        fd = result.get("fraud_detection") or {}
+        qg = result.get("quality_grading") or {}
+        nc = result.get("normalized_counts") or {}
         save_prediction(
             filename=file.filename or "unknown",
-            label=prediction['label'],
-            confidence=prediction['confidence'],
-            purity_score=prediction['purity_score'],
-            adulteration_pct=prediction['adulteration_pct'],
-            risk_level=prediction['risk_level'],
-            fluorescence_intensity=prediction['fluorescence_intensity'],
-            recommendation=prediction['recommendation'],
+            verdict=fd.get("verdict", "invalid"),
+            label=fd.get("label", "N/A"),
+            confidence=fd.get("confidence", 0.0),
+            purity_index=qg.get("purity_index"),
+            aging_step=qg.get("aging_step"),
+            grade=qg.get("grade"),
+            red_670nm=nc.get("red_670nm", 0.0),
+            green_530nm=nc.get("green_530nm", 0.0),
+            blue_440nm=nc.get("blue_440nm", 0.0),
+            nonzero_pixels=result.get("nonzero_pixels", 0),
             timestamp=timestamp,
         )
     except Exception as exc:
         logger.warning(f"DB save failed: {exc}")
 
-    return JSONResponse(content={
-        "label":                  prediction['label'],
-        "confidence":             prediction['confidence'],
-        "purity_score":           prediction['purity_score'],
-        "adulteration_pct":       prediction['adulteration_pct'],
-        "risk_level":             prediction['risk_level'],
-        "fluorescence_intensity": prediction['fluorescence_intensity'],
-        "top_features":           prediction['top_features'],
-        "recommendation":         prediction['recommendation'],
-        "timestamp":              timestamp,
-    })
+    result["timestamp"] = timestamp
+    return JSONResponse(content=result)

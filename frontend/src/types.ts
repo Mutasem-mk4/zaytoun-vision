@@ -1,27 +1,55 @@
-// Shared types for the Zaytoun Vision app
+// Shared types for the Zaytoun Vision app v2
+
+export interface FraudDetection {
+  passed: boolean;
+  verdict: 'authentic_evoo' | 'industrial_seed_oil' | 'adulterated_blend' | 'inconclusive';
+  label: string;
+  message: string;
+  confidence: number;
+}
+
+export interface QualityGrading {
+  purity_index: number;
+  aging_step: number;
+  grade: string;
+  description: string;
+  color: 'green' | 'yellow' | 'red';
+  green_phenols: number;
+  oxidation_marker: number;
+}
 
 export interface PredictionResult {
-  label: 'pure' | 'adulterated';
-  confidence: number;
-  purity_score: number;
-  adulteration_pct: number;
-  risk_level: 'low' | 'medium' | 'high';
-  fluorescence_intensity: number;
-  top_features: Record<string, number>;
-  recommendation: string;
+  valid: boolean;
+  error?: string;
+  raw?: {
+    R: number;
+    G: number;
+    B: number;
+  };
+  normalized_counts?: {
+    red_670nm: number;
+    green_530nm: number;
+    blue_440nm: number;
+  };
+  fraud_detection?: FraudDetection;
+  quality_grading?: QualityGrading | null;
+  nonzero_pixels?: number;
   timestamp: string;
 }
 
 export interface HistoryRecord {
   id: number;
   filename: string;
+  verdict: string;
   label: string;
   confidence: number;
-  purity_score: number;
-  adulteration_pct: number;
-  risk_level: string;
-  fluorescence_intensity: number;
-  recommendation: string;
+  purity_index: number | null;
+  aging_step: number | null;
+  grade: string | null;
+  red_670nm: number;
+  green_530nm: number;
+  blue_440nm: number;
+  nonzero_pixels: number;
   timestamp: string;
 }
 
@@ -35,4 +63,3 @@ export interface EemFeatureRecord {
   aging_step: number;
   filename: string;
 }
-

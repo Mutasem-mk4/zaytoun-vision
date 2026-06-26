@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  CheckCircle2,
-  AlertTriangle,
-  FlaskConical,
-  ShieldCheck,
-  BarChart2,
   Download,
   RefreshCw,
+  AlertTriangle,
+  Calendar,
+  Layers,
 } from 'lucide-react';
 import type { PredictionResult } from '../types';
-import PurityGauge from '../components/PurityGauge';
-import RiskBadge from '../components/RiskBadge';
-import FeatureCard from '../components/FeatureCard';
+import FraudVerdictCard from '../components/FraudVerdictCard';
+import QualityGradeCard from '../components/QualityGradeCard';
+import SpectralBarsCard from '../components/SpectralBarsCard';
 
 export default function Result() {
   const navigate = useNavigate();
@@ -33,7 +31,6 @@ export default function Result() {
 
   if (!result) return null;
 
-  const isPure      = result.label === 'pure';
   const formattedTs = new Date(result.timestamp).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -43,154 +40,98 @@ export default function Result() {
     window.print();
   };
 
+  // Check if image was invalid (too dark / out of focus)
+  if (!result.valid) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+        <div className="p-8 rounded-2xl border border-yellow-200 bg-yellow-50 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Image too dark — retake under UV light</h2>
+          <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
+            The system could not detect any valid UV fluorescence. Please ensure your sample is illuminated with 365nm UV light inside a darkbox, and that you have cropped to the active liquid layer.
+          </p>
+          <Link
+            to="/analyze"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#1D9E75] text-white font-bold text-sm hover:bg-green-600 transition-colors shadow-sm"
+          >
+            <RefreshCw size={16} />
+            Try again
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const fraud = result.fraud_detection;
+  const grading = result.quality_grading;
+  const normalizedCounts = result.normalized_counts;
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 fade-in">
-      {/* ------------------------------------------------------------------ */}
-      {/* Certificate header                                                  */}
-      {/* ------------------------------------------------------------------ */}
-      <div
-        className="rounded-2xl p-8 mb-6 text-white relative overflow-hidden"
-        style={{ background: isPure
-          ? 'linear-gradient(135deg, #0f4234 0%, #1D9E75 100%)'
-          : 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)' }}
-      >
-        {/* Decorative blob */}
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 bg-white pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-          {/* Big score */}
-          <div className="text-center sm:text-left">
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70 mb-1">Purity Score</p>
-            <p className="text-7xl font-extrabold leading-none">{result.purity_score}%</p>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden sm:block w-px h-24 bg-white/20" />
-
-          {/* Verdict + gauge */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-3">
-              {isPure
-                ? <CheckCircle2 size={22} className="text-green-200" />
-                : <AlertTriangle size={22} className="text-red-200" />}
-              <span className="text-lg font-bold">
-                {isPure ? 'Likely authentic EVOO ✓' : 'Possible adulteration ⚠️'}
-              </span>
-            </div>
-
-            <div className="mb-4">
-              <PurityGauge score={result.purity_score} />
-            </div>
-
-            <div className="flex items-center gap-2 text-sm text-white/80">
-              <span className="font-semibold text-white">{result.confidence}%</span>
-              model confidence
-            </div>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      {/* Report Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100 mb-8">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900">Analysis Report</h1>
+          <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
+            <span className="flex items-center gap-1">
+              <Calendar size={13} />
+              {formattedTs}
+            </span>
+            <span className="flex items-center gap-1">
+              <Layers size={13} />
+              CMOS low-cost spectrometer mode
+            </span>
           </div>
         </div>
 
-        {/* Timestamp */}
-        <p className="absolute bottom-4 right-6 text-xs text-white/50">
-          Analyzed {formattedTs}
-        </p>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Metrics grid                                                         */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <FeatureCard
-          icon={<AlertTriangle size={20} />}
-          title="Adulteration"
-          value={`${result.adulteration_pct}%`}
-          description="Estimated adulteration level"
-          accent={false}
-        />
-        <div className="card shadow-card flex flex-col gap-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Risk Level</p>
-          <RiskBadge level={result.risk_level} size="lg" />
-          <p className="text-xs text-gray-400">Based on label + confidence</p>
+        <div className="flex gap-2 no-print">
+          <button
+            id="download-report-btn"
+            onClick={handlePrint}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-xs hover:bg-gray-50 transition-colors bg-white shadow-sm"
+          >
+            <Download size={14} />
+            Download Report (PDF)
+          </button>
         </div>
-        <FeatureCard
-          icon={<BarChart2 size={20} />}
-          title="Confidence"
-          value={`${result.confidence}%`}
-          description="Model prediction confidence"
-          accent
-        />
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Details section                                                      */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {/* Fluorescence */}
-        <div className="card shadow-card">
-          <div className="flex items-center gap-2 mb-3">
-            <FlaskConical size={18} className="text-olive-500" />
-            <h3 className="text-sm font-semibold text-gray-700">Fluorescence Intensity</h3>
+      {/* Main Results Stack */}
+      <div className="space-y-6">
+        {/* Stage 1: Fraud Verdict */}
+        {fraud && <FraudVerdictCard fraud={fraud} />}
+
+        {/* Stage 2: Quality Grading (Only show if passed Stage 1) */}
+        {grading && <QualityGradeCard grading={grading} />}
+
+        {/* Spectral Readings (Bars) */}
+        {normalizedCounts && <SpectralBarsCard counts={normalizedCounts} />}
+
+        {/* Extra info: raw means & pixel count */}
+        {result.raw && (
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500 flex flex-col sm:flex-row justify-between gap-2">
+            <span><strong>Raw RGB Means:</strong> R={result.raw.R.toFixed(1)}, G={result.raw.G.toFixed(1)}, B={result.raw.B.toFixed(1)}</span>
+            <span><strong>Active Pixels:</strong> {result.nonzero_pixels?.toLocaleString()} px after background border thresholding</span>
           </div>
-          <p className="text-3xl font-extrabold text-gray-900">{result.fluorescence_intensity.toFixed(1)}</p>
-          <p className="text-xs text-gray-400 mt-1">Mean B+G channel value (0–255 range)</p>
-        </div>
-
-        {/* AI recommendation */}
-        <div className="card shadow-card">
-          <div className="flex items-center gap-2 mb-3">
-            <ShieldCheck size={18} className="text-olive-500" />
-            <h3 className="text-sm font-semibold text-gray-700">AI Recommendation</h3>
-          </div>
-          <p className="text-sm text-gray-600 leading-relaxed">{result.recommendation}</p>
-        </div>
+        )}
       </div>
 
-      {/* Top features table */}
-      <div className="card shadow-card mb-8">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Diagnostic Features</h3>
-        <table className="w-full text-sm" aria-label="Top features table">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">Feature</th>
-              <th className="text-right pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(result.top_features).map(([key, val]) => (
-              <tr key={key} className="border-b border-gray-50 last:border-0">
-                <td className="py-2.5 font-mono text-xs text-gray-600">{key}</td>
-                <td className="py-2.5 text-right font-semibold text-gray-900">{Number(val).toFixed(4)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Action buttons                                                       */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="flex flex-col sm:flex-row gap-3 no-print">
-        <button
-          id="download-report-btn"
-          onClick={handlePrint}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-olive-200 text-olive-600 font-semibold text-sm hover:bg-olive-50 transition-colors"
-        >
-          <Download size={16} />
-          Download Report (PDF)
-        </button>
+      {/* Action buttons */}
+      <div className="mt-8 flex flex-col sm:flex-row gap-3 no-print">
         <Link
           to="/analyze"
           id="analyze-another-btn"
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-olive-500 text-white font-semibold text-sm hover:bg-olive-600 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#1D9E75] text-white font-bold text-sm hover:bg-green-600 transition-colors shadow-md text-center"
         >
           <RefreshCw size={16} />
           Analyze another sample
         </Link>
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Print-only header                                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="hidden print:block mt-12 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center">
+      {/* Print-only footer */}
+      <div className="hidden print:block mt-12 pt-4 border-t border-gray-200 text-[10px] text-gray-400 text-center">
         Zaytoun Vision — AI Olive Oil Authenticity Report · {formattedTs} ·
         For field screening purposes only. Not a substitute for accredited laboratory analysis.
       </div>
