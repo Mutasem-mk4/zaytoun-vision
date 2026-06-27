@@ -1,8 +1,8 @@
 // ============================================================
-// OliveLogo — Zaytoun Vision SVG Logo Component
+// OliveLogo — ZaytounCom SVG Logo Component
 // ============================================================
-// An elegant, minimal olive branch with leaves and olives.
-// Uses primary green (#2D5016) and accent gold (#C9A84C).
+// An elegant, organic olive branch with leaves and olives.
+// Styled to match the premium brand aesthetic.
 // ============================================================
 
 import { motion } from 'framer-motion';
@@ -21,101 +21,90 @@ export default function OliveLogo({ size = 48, className = '', animate = true }:
     <svg
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 512 512"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Zaytoun Vision olive branch logo"
+      aria-label="ZaytounCom olive branch logo"
     >
+      {/* 1. Branch Stems */}
+      {/* Stem connection to Olive 1 */}
+      <path
+        d="M200 340 C 215 348, 230 355, 246 362"
+        stroke="#5d6f4c"
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Stem connection to Olive 2 */}
+      <path
+        d="M270 230 C 285 245, 292 258, 300 268"
+        stroke="#5d6f4c"
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Stem connection to Olive 3 */}
+      <path
+        d="M320 165 C 330 178, 335 185, 342 195"
+        stroke="#5d6f4c"
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+      />
       {/* Main branch stem */}
       <path
-        d="M12 52 C20 44, 28 36, 36 28 C40 24, 46 18, 52 14"
-        stroke="#2D5016"
-        strokeWidth="2.5"
+        d="M124 422 C 140 405, 230 310, 310 180 C 330 148, 350 90, 358 72"
+        stroke="#5d6f4c"
+        strokeWidth="10"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* Left lower leaf */}
-      <ellipse
-        cx="18"
-        cy="46"
-        rx="6"
-        ry="3"
-        transform="rotate(-35 18 46)"
-        fill="#2D5016"
-        opacity="0.9"
+      {/* 2. Leaves */}
+      {/* Bottom leaf */}
+      <path
+        d="M 152 390 C 190 395, 240 420, 265 434 C 220 425, 175 405, 152 390 Z"
+        fill="#889d7b"
       />
-
+      {/* Lower-left leaf */}
+      <path
+        d="M 152 390 C 145 350, 150 290, 185 248 C 175 295, 170 355, 152 390 Z"
+        fill="#889d7b"
+      />
       {/* Middle-left leaf */}
-      <ellipse
-        cx="26"
-        cy="38"
-        rx="7"
-        ry="3"
-        transform="rotate(-50 26 38)"
-        fill="#2D5016"
-        opacity="0.85"
+      <path
+        d="M 230 280 C 225 240, 220 180, 252 142 C 242 190, 240 245, 230 280 Z"
+        fill="#889d7b"
       />
-
-      {/* Middle-right leaf (upper side) */}
-      <ellipse
-        cx="33"
-        cy="34"
-        rx="6"
-        ry="2.8"
-        transform="rotate(30 33 34)"
-        fill="#4A7C59"
-        opacity="0.8"
+      {/* Middle-right leaf */}
+      <path
+        d="M 285 220 C 310 215, 360 250, 382 268 C 340 262, 305 245, 285 220 Z"
+        fill="#889d7b"
       />
-
-      {/* Upper-left leaf */}
-      <ellipse
-        cx="38"
-        cy="26"
-        rx="7"
-        ry="3"
-        transform="rotate(-45 38 26)"
-        fill="#2D5016"
-        opacity="0.9"
-      />
-
       {/* Top leaf */}
-      <ellipse
-        cx="46"
-        cy="20"
-        rx="6"
-        ry="2.5"
-        transform="rotate(35 46 20)"
-        fill="#4A7C59"
-        opacity="0.85"
+      <path
+        d="M 335 140 C 342 110, 375 75, 388 68 C 375 88, 355 125, 335 140 Z"
+        fill="#889d7b"
       />
 
-      {/* Small tip leaf */}
-      <ellipse
-        cx="50"
-        cy="16"
-        rx="4"
-        ry="2"
-        transform="rotate(-40 50 16)"
-        fill="#2D5016"
-        opacity="0.7"
-      />
+      {/* 3. Olives */}
+      {/* Olive 1 (Lowest) */}
+      <g>
+        <ellipse rx="36" ry="26" cx="246" cy="362" transform="rotate(30 246 362)" fill="#c6ae45" />
+        <ellipse rx="9" ry="6" cx="230" cy="350" transform="rotate(30 230 350)" fill="#fcfbfa" opacity="0.85" />
+      </g>
 
-      {/* Olive 1 — large gold */}
-      <circle cx="22" cy="42" r="3.5" fill="#C9A84C" />
-      <circle cx="21" cy="41" r="1" fill="#d4b96a" opacity="0.6" />
+      {/* Olive 2 (Middle) */}
+      <g>
+        <ellipse rx="38" ry="28" cx="300" cy="268" transform="rotate(-20 300 268)" fill="#c6ae45" />
+        <ellipse rx="10" ry="7" cx="284" cy="254" transform="rotate(-20 284 254)" fill="#fcfbfa" opacity="0.85" />
+      </g>
 
-      {/* Olive 2 — medium gold */}
-      <circle cx="40" cy="22" r="3" fill="#C9A84C" />
-      <circle cx="39" cy="21" r="0.8" fill="#d4b96a" opacity="0.6" />
-
-      {/* Olive 3 — small accent */}
-      <circle cx="30" cy="32" r="2.5" fill="#a88a32" opacity="0.85" />
-      <circle cx="29.2" cy="31.2" r="0.7" fill="#d4b96a" opacity="0.5" />
-
-      {/* Leaf veins for detail */}
-      <line x1="23" y1="38" x2="29" y2="38" stroke="#1e3a0e" strokeWidth="0.5" opacity="0.3" />
-      <line x1="35" y1="26" x2="41" y2="26" stroke="#1e3a0e" strokeWidth="0.5" opacity="0.3" />
+      {/* Olive 3 (Highest) */}
+      <g>
+        <ellipse rx="38" ry="28" cx="342" cy="195" transform="rotate(-30 342 195)" fill="#c6ae45" />
+        <ellipse rx="10" ry="7" cx="326" cy="181" transform="rotate(-30 326 181)" fill="#fcfbfa" opacity="0.85" />
+      </g>
     </svg>
   );
 
