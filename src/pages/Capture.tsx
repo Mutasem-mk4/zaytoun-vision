@@ -31,6 +31,8 @@ export default function Capture() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,6 +45,7 @@ export default function Capture() {
     runDemoAnalysis,
     setResult,
     setLoadingState,
+    language,
   } = useAnalysisStore();
 
   // Navigate to results when analysis completes
@@ -136,7 +139,7 @@ export default function Capture() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        handleAnalysis(reader.result);
+        setUploadedFileUrl(reader.result);
       }
     };
     reader.readAsDataURL(file);
@@ -144,6 +147,7 @@ export default function Capture() {
 
   const handleAnalysis = async (dataUrl: string) => {
     stopCamera();
+    setUploadedFileUrl(null);
     setLoadingState('analyzing', 'Uploading sample to Azure...');
     try {
       const result = await analyzeImage(dataUrl, sampleName || 'Live Sample');
@@ -155,6 +159,34 @@ export default function Capture() {
   };
 
   const isAnalyzing = loadingState === 'analyzing' || loadingState === 'capturing' || loadingState === 'uploading';
+
+  const getStepStatus = (stepIndex: number) => {
+    const msg = loadingMessage.toLowerCase();
+    if (stepIndex === 1) {
+      if (msg.includes('capturing')) return 'active';
+      if (msg.includes('uploading') || msg.includes('analyzing') || msg.includes('computing') || msg.includes('complete')) return 'done';
+      return 'active';
+    }
+    if (stepIndex === 2) {
+      if (msg.includes('capturing')) return 'pending';
+      if (msg.includes('uploading')) return 'active';
+      if (msg.includes('analyzing') || msg.includes('computing') || msg.includes('complete')) return 'done';
+      return 'pending';
+    }
+    if (stepIndex === 3) {
+      if (msg.includes('capturing') || msg.includes('uploading')) return 'pending';
+      if (msg.includes('analyzing')) return 'active';
+      if (msg.includes('computing') || msg.includes('complete')) return 'done';
+      return 'pending';
+    }
+    if (stepIndex === 4) {
+      if (msg.includes('capturing') || msg.includes('uploading') || msg.includes('analyzing')) return 'pending';
+      if (msg.includes('computing')) return 'active';
+      if (msg.includes('complete')) return 'done';
+      return 'pending';
+    }
+    return 'pending';
+  };
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -212,15 +244,71 @@ export default function Capture() {
             /* Loading State */
             <motion.div
               key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-20"
+              className="flex flex-col items-center justify-center py-12 max-w-md mx-auto"
             >
-              <LoadingOlive
-                message={loadingMessage}
-                size={80}
-              />
+              {/* Spinner */}
+              <div className="mb-8">
+                <LoadingOlive
+                  message={loadingMessage}
+                  size={70}
+                />
+              </div>
+
+              {/* Progress Checklist Card */}
+              <div className="w-full glass rounded-2xl p-6 border border-white/20 shadow-elevated">
+                <h4 className="font-display text-base font-bold text-primary border-b border-dark/5 pb-3 mb-4 text-center">
+                  {language === 'ar' ? 'مسار فحص جودة زيت الزيتون بالذكاء الاصطناعي' : 'AI Olive Oil Quality Pipeline'}
+                </h4>
+                
+                <div className="space-y-4">
+                  {[
+                    { id: 1, en: "Capture fluorescence signature", ar: "التقاط بصمة الفلورة" },
+                    { id: 2, en: "Upload footprint to Azure Blob", ar: "رفع البصمة الطيفية إلى أزور" },
+                    { id: 3, en: "Run Custom Vision classification", ar: "تصنيف نموذج Azure Custom Vision" },
+                    { id: 4, en: "Evaluate EVOO quality scorecard", ar: "تقييم أصالة ونقاء زيت الزيتون" },
+                  ].map((step) => {
+                    const status = getStepStatus(step.id);
+                    return (
+                      <div key={step.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3">
+                          {status === 'done' ? (
+                            <span className="text-success text-base">✅</span>
+                          ) : status === 'active' ? (
+                            <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+                          ) : (
+                            <span className="text-dark/20 text-base">⚪</span>
+                          )}
+                          <span className={`font-medium ${
+                            status === 'done' 
+                              ? 'text-dark/80 line-through' 
+                              : status === 'active' 
+                                ? 'text-primary font-bold animate-pulse' 
+                                : 'text-dark/40'
+                          } ${language === 'ar' ? 'font-arabic' : ''}`}>
+                            {language === 'ar' ? step.ar : step.en}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                          status === 'done'
+                            ? 'bg-success/10 text-success'
+                            : status === 'active'
+                              ? 'bg-accent/15 text-accent-dark animate-pulse'
+                              : 'bg-dark/5 text-dark/30'
+                        }`}>
+                          {status === 'done' 
+                            ? (language === 'ar' ? 'اكتمل' : 'Done') 
+                            : status === 'active' 
+                              ? (language === 'ar' ? 'جاري الفحص' : 'Active') 
+                              : (language === 'ar' ? 'قيد الانتظار' : 'Pending')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </motion.div>
           ) : activeTab === 'demo' ? (
             /* Demo Mode - Scenario Cards */
@@ -327,13 +415,37 @@ export default function Capture() {
 
                     <div className="relative aspect-video w-full bg-black/5 rounded-xl overflow-hidden mb-4 border border-dark/5 flex items-center justify-center">
                       {stream ? (
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Scanner Alignment Overlay */}
+                          <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
+                            <div className="relative w-4/5 h-4/5 border border-dashed border-primary/30 rounded-lg flex items-center justify-center">
+                              {/* Scanning line animation */}
+                              <motion.div
+                                animate={{ y: ['0%', '280%', '0%'] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                                className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent to-transparent top-0"
+                              />
+                              
+                              {/* Bounding corners */}
+                              <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-accent rounded-tl-sm" />
+                              <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-accent rounded-tr-sm" />
+                              <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-accent rounded-bl-sm" />
+                              <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-accent rounded-br-sm" />
+
+                              {/* Target Crosshair */}
+                              <div className="w-6 h-6 border border-accent/20 rounded-full flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 bg-accent/50 rounded-full animate-pulse" />
+                              </div>
+                            </div>
+                          </div>
+                        </>
                       ) : (
                         <div className="p-6 text-center">
                           <span className="text-4xl block mb-2">💡</span>
@@ -395,25 +507,51 @@ export default function Capture() {
                       <span className="font-arabic text-xs text-accent">تحميل ملف صورة</span>
                     </div>
 
-                    <div className="py-10 flex flex-col items-center justify-center">
-                      <span className="text-5xl mb-4 transition-transform block">📤</span>
-                      <p className="text-sm font-medium text-dark/70 mb-1">
-                        Drag and drop your sample image here
-                      </p>
-                      <p className="text-xs text-dark/40 mb-4">
-                        Supports JPEG, PNG or BMP files under 4MB
-                      </p>
-                      
-                      <label className="cursor-pointer px-4 py-2 bg-white hover:bg-dark/5 border border-dark/10 rounded-lg text-xs font-semibold text-dark/70 shadow-sm transition-all active:scale-95">
-                        Browse Files
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                        />
-                      </label>
-                    </div>
+                    {uploadedFileUrl ? (
+                      <div className="w-full flex flex-col items-center py-2">
+                        <div className="relative aspect-video w-full max-h-36 bg-black/5 rounded-xl overflow-hidden mb-4 border border-dark/5 flex items-center justify-center">
+                          <img
+                            src={uploadedFileUrl}
+                            alt="Sample preview"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="flex gap-2 w-full">
+                          <button
+                            onClick={() => handleAnalysis(uploadedFileUrl)}
+                            className="flex-1 py-2.5 rounded-xl gradient-olive text-white font-semibold text-xs shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                          >
+                            {language === 'ar' ? 'تحليل بالذكاء الاصطناعي ⚡' : '⚡ Run AI Analysis'}
+                          </button>
+                          <button
+                            onClick={() => setUploadedFileUrl(null)}
+                            className="px-4 py-2.5 rounded-xl border border-dark/10 hover:bg-dark/5 text-dark font-medium text-xs transition-all cursor-pointer"
+                          >
+                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-10 flex flex-col items-center justify-center">
+                        <span className="text-5xl mb-4 transition-transform block">📤</span>
+                        <p className="text-sm font-medium text-dark/70 mb-1">
+                          Drag and drop your sample image here
+                        </p>
+                        <p className="text-xs text-dark/40 mb-4">
+                          Supports JPEG, PNG or BMP files under 4MB
+                        </p>
+                        
+                        <label className="cursor-pointer px-4 py-2 bg-white hover:bg-dark/5 border border-dark/10 rounded-lg text-xs font-semibold text-dark/70 shadow-sm transition-all active:scale-95">
+                          Browse Files
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   <div className="w-full bg-dark/5 rounded-xl p-3 text-left">
@@ -422,6 +560,78 @@ export default function Capture() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Purity Testing Guide Card */}
+              <div className="mt-8 bg-white/40 backdrop-blur-md rounded-2xl border border-dark/5 overflow-hidden transition-all duration-300">
+                <button
+                  onClick={() => setGuideOpen(!guideOpen)}
+                  className="w-full px-6 py-4 flex items-center justify-between font-display text-base font-bold text-primary hover:bg-dark/5 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>💡</span>
+                    <span className={language === 'ar' ? 'font-arabic' : ''}>
+                      {language === 'ar' ? 'دليل الفحص الطيفي وإرشادات التصوير' : 'Spectroscopic Testing & Imaging Guide'}
+                    </span>
+                  </span>
+                  <span className="text-xs text-dark/40">{guideOpen ? '▲' : '▼'}</span>
+                </button>
+
+                <AnimatePresence>
+                  {guideOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="border-t border-dark/5 overflow-hidden"
+                    >
+                      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-dark/70 leading-relaxed">
+                        {/* DOS */}
+                        <div className="bg-success/5 border border-success/10 rounded-xl p-4">
+                          <h5 className="font-semibold text-success mb-2 flex items-center gap-1.5">
+                            <span>✅</span>
+                            <span className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'إرشادات ننصح بها (Do\'s)' : 'Best Practices (Do\'s)'}
+                            </span>
+                          </h5>
+                          <ul className="space-y-1.5 list-disc list-inside">
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'ضع عينة الزيت في صندوق مظلم أو تحت إضاءة الأشعة فوق البنفسجية (365 نانومتر).' : 'Align the sample vial/bottle in the center of the viewport guide.'}
+                            </li>
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'احرص على تثبيت الكاميرا جيداً لتفادي اهتزاز الصورة.' : 'Ensure the UV lamp (365nm) is directly illuminating the oil.'}
+                            </li>
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'قم بقص الصورة للتركيز على قارورة الزيت فقط للحصول على أفضل دقة للذكاء الاصطناعي.' : 'Crop or focus the image to capture only the bottle/vial content.'}
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* DON'TS */}
+                        <div className="bg-danger/5 border border-danger/10 rounded-xl p-4">
+                          <h5 className="font-semibold text-danger mb-2 flex items-center gap-1.5">
+                            <span>❌</span>
+                            <span className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'إجراءات ننصح بتجنبها (Don\'ts)' : 'Avoid These (Don\'ts)'}
+                            </span>
+                          </h5>
+                          <ul className="space-y-1.5 list-disc list-inside">
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'تجنب الفحص تحت إضاءة الغرفة العادية (المصابيح الفلورية أو ضوء الشمس).' : 'Do not capture images under standard ambient room light.'}
+                            </li>
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'تجنب ظهور انعكاسات ضوئية أو لمعان شديد على سطح الزجاج.' : 'Avoid high glare or direct overhead reflections on the glass bottle.'}
+                            </li>
+                            <li className={language === 'ar' ? 'font-arabic' : ''}>
+                              {language === 'ar' ? 'لا تلتقط صوراً مشوشة أو غير واضحة المعالم.' : 'Do not use blurry, out-of-focus, or extremely low-resolution photos.'}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Hidden canvas for capturing video frames */}
