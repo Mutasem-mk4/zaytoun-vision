@@ -1,0 +1,17 @@
+{
+  "name": "ZaytounCom",
+  "short_name": "ZaytounCom",
+  "description": "AI-powered olive oil purity testing using smartphone imaging and Azure Custom Vision.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5F0",
+  "theme_color": "#2D5016",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
