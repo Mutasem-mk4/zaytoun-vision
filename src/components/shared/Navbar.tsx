@@ -3,11 +3,13 @@
 // ============================================================
 // Glass-morphism navbar with OliveLogo, nav links, and mobile
 // hamburger menu with animated slide-out drawer.
+// Fully bilingual (English & Arabic) supporting RTL layout directions.
 // ============================================================
 
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAnalysisStore } from '@/store/analysisStore';
 import OliveLogo from './OliveLogo';
 
 interface NavItem {
@@ -25,6 +27,11 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { language, setLanguage } = useAnalysisStore();
+
+  const handleLangToggle = () => {
+    setLanguage(language === 'en' ? 'ar' : 'en');
+  };
 
   return (
     <>
@@ -49,35 +56,50 @@ export default function Navbar() {
               </div>
             </NavLink>
 
-            {/* Desktop Nav Links */}
-            <div className="hidden md:flex items-center gap-1">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/'}
-                  className={({ isActive }) =>
-                    `relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isActive
-                        ? 'text-primary bg-primary/5'
-                        : 'text-dark/60 hover:text-dark hover:bg-dark/5'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span>{item.label}</span>
-                      {isActive && (
-                        <motion.div
-                          layoutId="nav-underline"
-                          className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full"
-                          transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                        />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+            {/* Desktop Nav & Lang Switcher */}
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                {NAV_ITEMS.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/'}
+                    className={({ isActive }) =>
+                      `relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                        isActive
+                          ? 'text-primary bg-primary/5 font-semibold'
+                          : 'text-dark/60 hover:text-dark hover:bg-dark/5'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span className={language === 'ar' ? 'font-arabic' : ''}>
+                          {language === 'ar' ? item.labelAr : item.label}
+                        </span>
+                        {isActive && (
+                          <motion.div
+                            layoutId="nav-underline"
+                            className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full"
+                            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                          />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+
+              {/* Language Switcher */}
+              <button
+                onClick={handleLangToggle}
+                className="px-3.5 py-1.5 rounded-lg border border-primary/20 text-xs font-semibold text-primary hover:bg-primary/5 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🌐</span>
+                <span className={language === 'ar' ? '' : 'font-arabic'}>
+                  {language === 'en' ? 'العربية' : 'English'}
+                </span>
+              </button>
             </div>
 
             {/* Mobile Hamburger */}
@@ -120,17 +142,19 @@ export default function Navbar() {
 
             {/* Drawer */}
             <motion.div
-              initial={{ x: '100%' }}
+              initial={{ x: language === 'ar' ? '-100%' : '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              exit={{ x: language === 'ar' ? '-100%' : '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-72 bg-surface shadow-elevated md:hidden"
+              className={`fixed top-0 bottom-0 z-50 w-72 bg-surface shadow-elevated md:hidden ${
+                language === 'ar' ? 'left-0' : 'right-0'
+              }`}
             >
               <div className="flex flex-col h-full pt-20 px-6">
                 {NAV_ITEMS.map((item, index) => (
                   <motion.div
                     key={item.to}
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: language === 'ar' ? -20 : 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08 }}
                   >
@@ -146,11 +170,39 @@ export default function Navbar() {
                         }`
                       }
                     >
-                      <span>{item.label}</span>
+                      <span className={language === 'ar' ? 'font-arabic' : ''}>
+                        {language === 'ar' ? item.labelAr : item.label}
+                      </span>
                       <span className="font-arabic text-sm opacity-60">{item.labelAr}</span>
                     </NavLink>
                   </motion.div>
                 ))}
+
+                {/* Mobile Language Toggle */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: NAV_ITEMS.length * 0.08 }}
+                  className="mt-6 pt-6 border-t border-dark/10"
+                >
+                  <button
+                    onClick={() => {
+                      handleLangToggle();
+                      setMobileOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary font-medium transition-all cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🌐</span>
+                      <span className={language === 'ar' ? '' : 'font-arabic'}>
+                        {language === 'en' ? 'العربية' : 'English'}
+                      </span>
+                    </span>
+                    <span className="text-xs text-primary/60">
+                      {language === 'en' ? 'تغيير اللغة' : 'Switch Language'}
+                    </span>
+                  </button>
+                </motion.div>
 
                 {/* Bottom branding */}
                 <div className="mt-auto pb-8 text-center">

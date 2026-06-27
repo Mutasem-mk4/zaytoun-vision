@@ -26,6 +26,10 @@ interface AnalysisStore {
   demoMode: boolean;
   demoScenarios: DemoScenario[];
   
+  // Language Support
+  language: 'en' | 'ar';
+  setLanguage: (lang: 'en' | 'ar') => void;
+  
   // Actions
   selectScenario: (scenario: DemoScenario) => void;
   runDemoAnalysis: (scenario: DemoScenario) => Promise<void>;
@@ -47,6 +51,15 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   history: [],
   demoMode: true,
   demoScenarios: DEMO_SCENARIOS,
+  language: 'en',
+
+  setLanguage: (lang) => {
+    set({ language: lang });
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+    }
+  },
 
   selectScenario: (scenario) => {
     set({ selectedScenario: scenario });
