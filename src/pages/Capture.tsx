@@ -9,27 +9,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnalysisStore } from '@/store/analysisStore';
-import type { DemoScenario } from '@/types';
 import { analyzeImage } from '@/services/api';
 import LoadingOlive from '@/components/shared/LoadingOlive';
 
-type TabMode = 'demo' | 'camera';
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.5,
-      ease: 'easeOut' as const,
-    },
-  }),
-};
-
 export default function Capture() {
-  const [activeTab, setActiveTab] = useState<TabMode>('demo');
   const [sampleName, setSampleName] = useState('');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -42,10 +25,8 @@ export default function Capture() {
   const navigate = useNavigate();
 
   const {
-    demoScenarios,
     loadingState,
     loadingMessage,
-    runDemoAnalysis,
     setResult,
     setLoadingState,
   } = useAnalysisStore();
@@ -139,11 +120,6 @@ export default function Capture() {
     }
   };
 
-  // Handle scenario select
-  const handleScenarioClick = async (scenario: DemoScenario) => {
-    await runDemoAnalysis(scenario);
-  };
-
   // Main analysis wrapper
   const handleAnalysis = async (dataUrl: string, name?: string) => {
     setLoadingState('analyzing', 'Uploading sample to Azure...');
@@ -200,40 +176,6 @@ export default function Capture() {
           </h1>
         </motion.div>
 
-        {/* Tab Toggle */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex justify-center mb-10"
-        >
-          <div className="glass rounded-xl p-1.5 flex gap-1">
-            {[
-              { key: 'demo' as TabMode, label: 'Demo Mode', icon: '🎯' },
-              { key: 'camera' as TabMode, label: 'Live Camera', icon: '📷' },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`relative px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                  activeTab === tab.key
-                    ? 'text-white'
-                    : 'text-dark/60 hover:text-dark'
-                }`}
-              >
-                {activeTab === tab.key && (
-                  <motion.div
-                    layoutId="capture-tab"
-                    className="absolute inset-0 gradient-olive rounded-lg"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{tab.icon}</span>
-                <span className="relative z-10">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
 
         {/* Content */}
         <AnimatePresence mode="wait">
@@ -305,70 +247,6 @@ export default function Capture() {
                     );
                   })}
                 </div>
-              </div>
-            </motion.div>
-          ) : activeTab === 'demo' ? (
-            /* Demo Mode - Scenario Cards */
-            <motion.div
-              key="demo"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-sm text-dark/50 mb-8"
-              >
-                Select a pre-loaded scenario to test the analysis pipeline
-              </motion.p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {demoScenarios.map((scenario, index) => (
-                  <motion.button
-                    key={scenario.id}
-                    custom={index}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="show"
-                    whileHover={{ y: -6, scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => handleScenarioClick(scenario)}
-                    className="relative glass rounded-2xl p-6 text-left group overflow-hidden cursor-pointer"
-                  >
-                    {/* Colored left border */}
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl"
-                      style={{ backgroundColor: scenario.thumbnailColor }}
-                    />
-
-                    {/* Icon */}
-                    <motion.span
-                      whileHover={{ scale: 1.2, rotate: 10 }}
-                      className="text-4xl block mb-4"
-                    >
-                      {scenario.icon}
-                    </motion.span>
-
-                    {/* Name */}
-                    <h3 className="font-display text-lg font-bold text-dark mb-3 group-hover:text-primary transition-colors">
-                      {scenario.name}
-                    </h3>
-
-                    {/* Description */}
-                    <p className="text-xs text-dark/50 leading-relaxed mb-3">
-                      {scenario.description}
-                    </p>
-
-                    {/* Status preview */}
-                    <div
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
-                      style={{ backgroundColor: scenario.thumbnailColor }}
-                    >
-                      Score: {scenario.result.purityScore}%
-                    </div>
-                  </motion.button>
-                ))}
               </div>
             </motion.div>
           ) : (
