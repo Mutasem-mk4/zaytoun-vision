@@ -3,33 +3,25 @@
 // ============================================================
 // Glass-morphism navbar with OliveLogo, nav links, and mobile
 // hamburger menu with animated slide-out drawer.
-// Fully bilingual (English & Arabic) supporting RTL layout directions.
 // ============================================================
 
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAnalysisStore } from '@/store/analysisStore';
 import OliveLogo from './OliveLogo';
 
 interface NavItem {
   to: string;
   label: string;
-  labelAr: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Home', labelAr: 'الرئيسية' },
-  { to: '/history', label: 'History', labelAr: 'السجل' },
+  { to: '/', label: 'Home' },
+  { to: '/history', label: 'History' },
 ];
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { language, setLanguage } = useAnalysisStore();
-
-  const handleLangToggle = () => {
-    setLanguage(language === 'en' ? 'ar' : 'en');
-  };
 
   return (
     <>
@@ -48,13 +40,10 @@ export default function Navbar() {
                 <span className="font-display text-lg font-bold text-primary group-hover:text-accent transition-colors">
                   ZaytounCom
                 </span>
-                <span className="font-arabic text-[10px] text-primary/60 -mt-0.5">
-                  زيتون كوم
-                </span>
               </div>
             </NavLink>
 
-            {/* Desktop Nav & Lang Switcher */}
+            {/* Desktop Nav Links */}
             <div className="hidden md:flex items-center gap-4">
               <div className="flex items-center gap-1">
                 {NAV_ITEMS.map((item) => (
@@ -72,9 +61,7 @@ export default function Navbar() {
                   >
                     {({ isActive }) => (
                       <>
-                        <span className={language === 'ar' ? 'font-arabic' : ''}>
-                          {language === 'ar' ? item.labelAr : item.label}
-                        </span>
+                        <span>{item.label}</span>
                         {isActive && (
                           <motion.div
                             layoutId="nav-underline"
@@ -87,17 +74,6 @@ export default function Navbar() {
                   </NavLink>
                 ))}
               </div>
-
-              {/* Language Switcher */}
-              <button
-                onClick={handleLangToggle}
-                className="px-3.5 py-1.5 rounded-lg border border-primary/20 text-xs font-semibold text-primary hover:bg-primary/5 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <span>🌐</span>
-                <span className={language === 'ar' ? '' : 'font-arabic'}>
-                  {language === 'en' ? 'العربية' : 'English'}
-                </span>
-              </button>
             </div>
 
             {/* Mobile Hamburger */}
@@ -140,19 +116,17 @@ export default function Navbar() {
 
             {/* Drawer */}
             <motion.div
-              initial={{ x: language === 'ar' ? '-100%' : '100%' }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: language === 'ar' ? '-100%' : '100%' }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className={`fixed top-0 bottom-0 z-50 w-72 bg-surface shadow-elevated md:hidden ${
-                language === 'ar' ? 'left-0' : 'right-0'
-              }`}
+              className="fixed top-0 right-0 bottom-0 z-50 w-72 bg-surface shadow-elevated md:hidden"
             >
               <div className="flex flex-col h-full pt-20 px-6">
                 {NAV_ITEMS.map((item, index) => (
                   <motion.div
                     key={item.to}
-                    initial={{ opacity: 0, x: language === 'ar' ? -20 : 20 }}
+                    initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08 }}
                   >
@@ -168,45 +142,15 @@ export default function Navbar() {
                         }`
                       }
                     >
-                      <span className={language === 'ar' ? 'font-arabic' : ''}>
-                        {language === 'ar' ? item.labelAr : item.label}
-                      </span>
-                      <span className="font-arabic text-sm opacity-60">{item.labelAr}</span>
+                      <span>{item.label}</span>
                     </NavLink>
                   </motion.div>
                 ))}
-
-                {/* Mobile Language Toggle */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: NAV_ITEMS.length * 0.08 }}
-                  className="mt-6 pt-6 border-t border-dark/10"
-                >
-                  <button
-                    onClick={() => {
-                      handleLangToggle();
-                      setMobileOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary font-medium transition-all cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>🌐</span>
-                      <span className={language === 'ar' ? '' : 'font-arabic'}>
-                        {language === 'en' ? 'العربية' : 'English'}
-                      </span>
-                    </span>
-                    <span className="text-xs text-primary/60">
-                      {language === 'en' ? 'تغيير اللغة' : 'Switch Language'}
-                    </span>
-                  </button>
-                </motion.div>
 
                 {/* Bottom branding */}
                 <div className="mt-auto pb-8 text-center">
                   <OliveLogo size={28} animate={false} className="mx-auto mb-2" />
                   <p className="text-xs text-dark/40">ZaytounCom v1.0</p>
-                  <p className="font-arabic text-xs text-dark/30">زيتون كوم</p>
                 </div>
               </div>
             </motion.div>

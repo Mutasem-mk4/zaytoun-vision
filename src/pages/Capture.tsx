@@ -1,27 +1,30 @@
 // ============================================================
-// Capture — Demo Selection & Camera Capture Page
+// Capture — Video & File Upload Testing Interface
 // ============================================================
-// Tab toggle between Demo Mode (3 scenario cards) and Live
-// Camera / File Upload mode. Shows LoadingOlive during analysis.
+// Handles live camera streaming, alignment targeting guides,
+// file upload drag-and-drop, and dynamic pipeline status tracking.
 // ============================================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAnalysisStore } from '@/store/analysisStore';
+import type { DemoScenario } from '@/types';
 import { analyzeImage } from '@/services/api';
 import LoadingOlive from '@/components/shared/LoadingOlive';
-import type { DemoScenario } from '@/types';
 
 type TabMode = 'demo' | 'camera';
 
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { delay: i * 0.12, type: 'spring', stiffness: 200, damping: 20 },
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: 'easeOut' as const,
+    },
   }),
 };
 
@@ -45,7 +48,6 @@ export default function Capture() {
     runDemoAnalysis,
     setResult,
     setLoadingState,
-    language,
   } = useAnalysisStore();
 
   // Navigate to results when analysis completes
@@ -56,101 +58,97 @@ export default function Capture() {
     }
   }, [loadingState, navigate]);
 
-  // Cleanup camera stream on unmount
+  // Clean up stream on unmount
   useEffect(() => {
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [stream]);
 
-  // Stop camera when switching tabs
-  useEffect(() => {
-    if (activeTab === 'demo' && stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-  }, [activeTab, stream]);
-
-  const handleScenarioClick = async (scenario: DemoScenario) => {
-    await runDemoAnalysis(scenario);
-  };
-
+  // Start video stream
   const startCamera = async () => {
     setCameraError(null);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: 'environment', aspectRatio: 1.7777777778 },
+        audio: false,
       });
       setStream(mediaStream);
-      
-      // Delay slightly to ensure video element is rendered
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      }, 100);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setLoadingState('idle');
     } catch (err) {
-      console.error("Camera access failed:", err);
-      setCameraError("Unable to access camera. Please ensure permissions are granted and you are using HTTPS.");
+      console.error('Error accessing camera:', err);
+      setCameraError('Unable to access camera. Please check permissions.');
     }
   };
 
+  // Stop video stream
   const stopCamera = () => {
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
   };
 
+  // Capture image frame from stream and run analysis
   const captureImage = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext('2d');
+
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
         const dataUrl = canvas.toDataURL('image/jpeg');
-        handleAnalysis(dataUrl);
+        stopCamera();
+        handleAnalysis(dataUrl, sampleName || 'Live Camera Capture');
       }
     }
   };
 
+  // Process selected file
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      processFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedFileUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
+  // Handle Drag Over & Drop
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedFileUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setUploadedFileUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+  // Handle scenario select
+  const handleScenarioClick = async (scenario: DemoScenario) => {
+    await runDemoAnalysis(scenario);
   };
 
-  const handleAnalysis = async (dataUrl: string) => {
-    stopCamera();
-    setUploadedFileUrl(null);
+  // Main analysis wrapper
+  const handleAnalysis = async (dataUrl: string, name?: string) => {
     setLoadingState('analyzing', 'Uploading sample to Azure...');
     try {
-      const result = await analyzeImage(dataUrl, sampleName || 'Live Sample');
+      const result = await analyzeImage(dataUrl, name || 'Live Sample');
       setResult(result);
     } catch (err) {
       console.error("Analysis failed:", err);
@@ -200,7 +198,6 @@ export default function Capture() {
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-dark mb-2">
             Analyze Sample
           </h1>
-          <p className="font-arabic text-lg text-dark/50">تحليل العينة</p>
         </motion.div>
 
         {/* Tab Toggle */}
@@ -212,8 +209,8 @@ export default function Capture() {
         >
           <div className="glass rounded-xl p-1.5 flex gap-1">
             {[
-              { key: 'demo' as TabMode, label: 'Demo Mode', labelAr: 'الوضع التجريبي', icon: '🎯' },
-              { key: 'camera' as TabMode, label: 'Live Camera', labelAr: 'الكاميرا الحية', icon: '📷' },
+              { key: 'demo' as TabMode, label: 'Demo Mode', icon: '🎯' },
+              { key: 'camera' as TabMode, label: 'Live Camera', icon: '📷' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -260,15 +257,15 @@ export default function Capture() {
               {/* Progress Checklist Card */}
               <div className="w-full glass rounded-2xl p-6 border border-white/20 shadow-elevated">
                 <h4 className="font-display text-base font-bold text-primary border-b border-dark/5 pb-3 mb-4 text-center">
-                  {language === 'ar' ? 'مسار فحص جودة زيت الزيتون بالذكاء الاصطناعي' : 'AI Olive Oil Quality Pipeline'}
+                  AI Olive Oil Quality Pipeline
                 </h4>
                 
                 <div className="space-y-4">
                   {[
-                    { id: 1, en: "Capture fluorescence signature", ar: "التقاط بصمة الفلورة" },
-                    { id: 2, en: "Upload footprint to Azure Blob", ar: "رفع البصمة الطيفية إلى أزور" },
-                    { id: 3, en: "Run Custom Vision classification", ar: "تصنيف نموذج Azure Custom Vision" },
-                    { id: 4, en: "Evaluate EVOO quality scorecard", ar: "تقييم أصالة ونقاء زيت الزيتون" },
+                    { id: 1, label: "Capture fluorescence signature" },
+                    { id: 2, label: "Upload footprint to Azure Blob" },
+                    { id: 3, label: "Run Custom Vision classification" },
+                    { id: 4, label: "Evaluate EVOO quality scorecard" },
                   ].map((step) => {
                     const status = getStepStatus(step.id);
                     return (
@@ -287,8 +284,8 @@ export default function Capture() {
                               : status === 'active' 
                                 ? 'text-primary font-bold animate-pulse' 
                                 : 'text-dark/40'
-                          } ${language === 'ar' ? 'font-arabic' : ''}`}>
-                            {language === 'ar' ? step.ar : step.en}
+                          }`}>
+                            {step.label}
                           </span>
                         </div>
                         <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
@@ -299,10 +296,10 @@ export default function Capture() {
                               : 'bg-dark/5 text-dark/30'
                         }`}>
                           {status === 'done' 
-                            ? (language === 'ar' ? 'اكتمل' : 'Done') 
+                            ? 'Done' 
                             : status === 'active' 
-                              ? (language === 'ar' ? 'جاري الفحص' : 'Active') 
-                              : (language === 'ar' ? 'قيد الانتظار' : 'Pending')}
+                              ? 'Active' 
+                              : 'Pending'}
                         </span>
                       </div>
                     );
@@ -324,8 +321,6 @@ export default function Capture() {
                 className="text-center text-sm text-dark/50 mb-8"
               >
                 Select a pre-loaded scenario to test the analysis pipeline
-                <br />
-                <span className="font-arabic text-xs">اختر سيناريو محمّل مسبقاً لاختبار خط التحليل</span>
               </motion.p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -356,12 +351,9 @@ export default function Capture() {
                     </motion.span>
 
                     {/* Name */}
-                    <h3 className="font-display text-lg font-bold text-dark mb-1 group-hover:text-primary transition-colors">
+                    <h3 className="font-display text-lg font-bold text-dark mb-3 group-hover:text-primary transition-colors">
                       {scenario.name}
                     </h3>
-                    <p className="font-arabic text-sm text-accent mb-3">
-                      {scenario.nameAr}
-                    </p>
 
                     {/* Description */}
                     <p className="text-xs text-dark/50 leading-relaxed mb-3">
@@ -391,7 +383,7 @@ export default function Capture() {
               {/* Sample Name Input */}
               <div className="glass rounded-xl p-4 mb-6">
                 <label className="block text-xs font-semibold text-dark/60 uppercase tracking-wider mb-2">
-                  Sample Name / <span className="font-arabic">اسم العينة</span>
+                  Sample Name
                 </label>
                 <input
                   type="text"
@@ -410,7 +402,6 @@ export default function Capture() {
                       <h3 className="font-display text-lg font-bold text-dark text-left">
                         📷 Live UV Camera
                       </h3>
-                      <span className="font-arabic text-xs text-accent">الكاميرا الحية</span>
                     </div>
 
                     <div className="relative aspect-video w-full bg-black/5 rounded-xl overflow-hidden mb-4 border border-dark/5 flex items-center justify-center">
@@ -504,7 +495,6 @@ export default function Capture() {
                       <h3 className="font-display text-lg font-bold text-dark text-left">
                         📁 Upload Image File
                       </h3>
-                      <span className="font-arabic text-xs text-accent">تحميل ملف صورة</span>
                     </div>
 
                     {uploadedFileUrl ? (
@@ -521,13 +511,13 @@ export default function Capture() {
                             onClick={() => handleAnalysis(uploadedFileUrl)}
                             className="flex-1 py-2.5 rounded-xl gradient-olive text-white font-semibold text-xs shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
                           >
-                            {language === 'ar' ? 'تحليل بالذكاء الاصطناعي ⚡' : '⚡ Run AI Analysis'}
+                            ⚡ Run AI Analysis
                           </button>
                           <button
                             onClick={() => setUploadedFileUrl(null)}
                             className="px-4 py-2.5 rounded-xl border border-dark/10 hover:bg-dark/5 text-dark font-medium text-xs transition-all cursor-pointer"
                           >
-                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                            Cancel
                           </button>
                         </div>
                       </div>
@@ -570,9 +560,7 @@ export default function Capture() {
                 >
                   <span className="flex items-center gap-2">
                     <span>💡</span>
-                    <span className={language === 'ar' ? 'font-arabic' : ''}>
-                      {language === 'ar' ? 'دليل الفحص الطيفي وإرشادات التصوير' : 'Spectroscopic Testing & Imaging Guide'}
-                    </span>
+                    <span>Spectroscopic Testing & Imaging Guide</span>
                   </span>
                   <span className="text-xs text-dark/40">{guideOpen ? '▲' : '▼'}</span>
                 </button>
@@ -591,20 +579,12 @@ export default function Capture() {
                         <div className="bg-success/5 border border-success/10 rounded-xl p-4">
                           <h5 className="font-semibold text-success mb-2 flex items-center gap-1.5">
                             <span>✅</span>
-                            <span className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'إرشادات ننصح بها (Do\'s)' : 'Best Practices (Do\'s)'}
-                            </span>
+                            <span>Best Practices (Do\'s)</span>
                           </h5>
                           <ul className="space-y-1.5 list-disc list-inside">
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'ضع عينة الزيت في صندوق مظلم أو تحت إضاءة الأشعة فوق البنفسجية (365 نانومتر).' : 'Align the sample vial/bottle in the center of the viewport guide.'}
-                            </li>
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'احرص على تثبيت الكاميرا جيداً لتفادي اهتزاز الصورة.' : 'Ensure the UV lamp (365nm) is directly illuminating the oil.'}
-                            </li>
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'قم بقص الصورة للتركيز على قارورة الزيت فقط للحصول على أفضل دقة للذكاء الاصطناعي.' : 'Crop or focus the image to capture only the bottle/vial content.'}
-                            </li>
+                            <li>Align the sample vial/bottle in the center of the viewport guide.</li>
+                            <li>Ensure the UV lamp (365nm) is directly illuminating the oil.</li>
+                            <li>Crop or focus the image to capture only the bottle/vial content.</li>
                           </ul>
                         </div>
 
@@ -612,20 +592,12 @@ export default function Capture() {
                         <div className="bg-danger/5 border border-danger/10 rounded-xl p-4">
                           <h5 className="font-semibold text-danger mb-2 flex items-center gap-1.5">
                             <span>❌</span>
-                            <span className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'إجراءات ننصح بتجنبها (Don\'ts)' : 'Avoid These (Don\'ts)'}
-                            </span>
+                            <span>Avoid These (Don\'ts)</span>
                           </h5>
                           <ul className="space-y-1.5 list-disc list-inside">
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'تجنب الفحص تحت إضاءة الغرفة العادية (المصابيح الفلورية أو ضوء الشمس).' : 'Do not capture images under standard ambient room light.'}
-                            </li>
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'تجنب ظهور انعكاسات ضوئية أو لمعان شديد على سطح الزجاج.' : 'Avoid high glare or direct overhead reflections on the glass bottle.'}
-                            </li>
-                            <li className={language === 'ar' ? 'font-arabic' : ''}>
-                              {language === 'ar' ? 'لا تلتقط صوراً مشوشة أو غير واضحة المعالم.' : 'Do not use blurry, out-of-focus, or extremely low-resolution photos.'}
-                            </li>
+                            <li>Do not capture images under standard ambient room light.</li>
+                            <li>Avoid high glare or direct overhead reflections on the glass bottle.</li>
+                            <li>Do not use blurry, out-of-focus, or extremely low-resolution photos.</li>
                           </ul>
                         </div>
                       </div>

@@ -1,22 +1,30 @@
 // ============================================================
-// Certificate — Digital Purity Certificate Page
+// Certificate — Purity Analysis Certificate View
 // ============================================================
-// Visual HTML certificate with bilingual layout, QR code,
-// and Zaytoun Vision branding. Not react-pdf — just styled HTML.
+// Displays a formal, certifiable document detailing analysis
+// results, purity percentage, and verification signature.
 // ============================================================
 
 import { useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, type Variants } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAnalysisStore } from '@/store/analysisStore';
-import { generateCertificateId } from '@/services/demo';
 import OliveLogo from '@/components/shared/OliveLogo';
 import StatusBadge from '@/components/shared/StatusBadge';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
+
+const generateCertificateId = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'ZV-';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 };
 
 export default function Certificate() {
@@ -32,11 +40,6 @@ export default function Certificate() {
 
   const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://zaytoun.vision'}/verify/${certificateId}`;
   const issuedDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-  const issuedDateAr = new Date().toLocaleDateString('ar', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -60,7 +63,6 @@ export default function Certificate() {
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-dark mb-2">
             Purity Certificate
           </h1>
-          <p className="font-arabic text-lg text-dark/50">شهادة النقاء</p>
         </motion.div>
 
         {/* Certificate Card */}
@@ -89,7 +91,6 @@ export default function Certificate() {
               <h2 className="font-display text-2xl sm:text-3xl font-bold text-primary mb-1">
                 ZaytounCom
               </h2>
-              <p className="font-arabic text-lg text-accent">زيتون كوم</p>
               <div className="mt-4 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
             </div>
 
@@ -98,59 +99,24 @@ export default function Certificate() {
               <h3 className="font-display text-xl sm:text-2xl font-semibold text-dark uppercase tracking-widest mb-2">
                 Certificate of Purity Analysis
               </h3>
-              <p className="font-arabic text-base text-dark/50">
-                شهادة تحليل النقاء
-              </p>
             </div>
 
-            {/* Bilingual Content Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
-              {/* English Side */}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-dark/40 uppercase tracking-wider mb-1">Sample Name</p>
-                  <p className="text-base font-semibold text-dark">
-                    {currentResult.sampleName || 'Unknown Sample'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-dark/40 uppercase tracking-wider mb-1">Certificate ID</p>
-                  <p className="font-mono text-sm font-medium text-primary">{certificateId}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-dark/40 uppercase tracking-wider mb-1">Date Issued</p>
-                  <p className="text-sm text-dark">{issuedDate}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-dark/40 uppercase tracking-wider mb-1">Adulterant Status</p>
-                  <p className="text-sm text-dark">
-                    {currentResult.adulterantDetected || 'No adulterants detected'}
-                  </p>
-                </div>
+            {/* Centered Content Grid */}
+            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-10 text-sm">
+              <div className="text-right text-dark/50 font-medium">Sample Name:</div>
+              <div className="font-semibold text-dark text-left">
+                {currentResult.sampleName || 'Unknown Sample'}
               </div>
 
-              {/* Arabic Side */}
-              <div className="space-y-4 text-right" dir="rtl">
-                <div>
-                  <p className="font-arabic text-xs text-dark/40 mb-1">اسم العينة</p>
-                  <p className="font-arabic text-base font-semibold text-dark">
-                    {currentResult.sampleName || 'عينة غير معروفة'}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-arabic text-xs text-dark/40 mb-1">رقم الشهادة</p>
-                  <p className="font-mono text-sm font-medium text-primary" dir="ltr">{certificateId}</p>
-                </div>
-                <div>
-                  <p className="font-arabic text-xs text-dark/40 mb-1">تاريخ الإصدار</p>
-                  <p className="font-arabic text-sm text-dark">{issuedDateAr}</p>
-                </div>
-                <div>
-                  <p className="font-arabic text-xs text-dark/40 mb-1">حالة الغش</p>
-                  <p className="font-arabic text-sm text-dark">
-                    {currentResult.adulterantDetected ? 'تم كشف مادة مغشوشة' : 'لا توجد مواد مغشوشة'}
-                  </p>
-                </div>
+              <div className="text-right text-dark/50 font-medium">Certificate ID:</div>
+              <div className="font-mono font-medium text-primary text-left">{certificateId}</div>
+
+              <div className="text-right text-dark/50 font-medium">Date Issued:</div>
+              <div className="text-dark text-left">{issuedDate}</div>
+
+              <div className="text-right text-dark/50 font-medium">Adulterant Status:</div>
+              <div className="text-dark text-left">
+                {currentResult.adulterantDetected || 'No adulterants detected'}
               </div>
             </div>
 
@@ -190,8 +156,6 @@ export default function Certificate() {
                 />
                 <span className="text-[10px] text-dark/30 text-center">
                   Scan to verify
-                  <br />
-                  <span className="font-arabic">امسح للتحقق</span>
                 </span>
               </div>
 
@@ -200,7 +164,6 @@ export default function Certificate() {
                 <span className="text-2xl">☁️</span>
                 <div>
                   <p className="text-xs font-semibold text-dark">Analyzed by Azure Custom Vision</p>
-                  <p className="font-arabic text-[10px] text-dark/50">تحليل بواسطة أزور كاستم فيجن</p>
                 </div>
               </div>
             </div>

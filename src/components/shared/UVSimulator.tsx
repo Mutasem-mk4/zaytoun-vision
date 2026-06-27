@@ -7,25 +7,23 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAnalysisStore } from '@/store/analysisStore';
 
 export default function UVSimulator() {
   const [uvOn, setUvOn] = useState(false);
-  const { language } = useAnalysisStore();
 
   const t = {
-    title: language === 'ar' ? 'جهاز محاكاة الفلورة الأشعة فوق البنفسجية' : 'UV Fluorescence Simulator',
-    subtitle: language === 'ar' ? 'اضغط المفتاح لتشغيل الأشعة فوق البنفسجية ورؤية الفلورة' : 'Toggle the switch to trigger UV light and see fluorescence',
-    switchLabel: language === 'ar' ? 'مصباح الأشعة فوق البنفسجية (365nm)' : 'UV light source (365nm)',
-    vial1: language === 'ar' ? 'زيت زيتون بكر ممتاز' : 'Extra Virgin Olive Oil',
-    vial2: language === 'ar' ? 'زيت زيتون قديم/مؤكسد' : 'Aged/Oxidized Olive Oil',
-    vial3: language === 'ar' ? 'زيت بذور/مغشوش' : 'Seed/Adulterated Oil',
-    vial1Desc: language === 'ar' ? 'توهج أحمر مكثف بسبب الكلوروفيل النشط' : 'Intense red glow due to active chlorophyll',
-    vial2Desc: language === 'ar' ? 'توهج برتقالي/باهت مع بداية الأكسدة' : 'Dim orange/blue glow as oxidation begins',
-    vial3Desc: language === 'ar' ? 'توهج أزرق ساطع مميز للزيوت المكررة' : 'Bright blue fluorescence of refined oils',
-    tagPure: language === 'ar' ? 'نقي وطبيعي' : 'Pure & Natural',
-    tagAged: language === 'ar' ? 'قديم' : 'Aged',
-    tagAdulterated: language === 'ar' ? 'مغشوش/مكرر' : 'Adulterated',
+    title: 'UV Fluorescence Simulator',
+    subtitle: 'Toggle the switch to trigger UV light and see fluorescence',
+    switchLabel: 'UV light source (365nm)',
+    vial1: 'Extra Virgin Olive Oil',
+    vial2: 'Aged/Oxidized Olive Oil',
+    vial3: 'Seed/Adulterated Oil',
+    vial1Desc: 'Intense red glow due to active chlorophyll',
+    vial2Desc: 'Dim orange/blue glow as oxidation begins',
+    vial3Desc: 'Bright blue fluorescence of refined oils',
+    tagPure: 'Pure & Natural',
+    tagAged: 'Aged',
+    tagAdulterated: 'Adulterated',
   };
 
   return (
@@ -34,9 +32,9 @@ export default function UVSimulator() {
       <div className="text-center mb-6">
         <h3 className="font-display text-2xl font-bold text-primary flex justify-center items-center gap-2">
           <span>🔬</span>
-          <span className={language === 'ar' ? 'font-arabic' : ''}>{t.title}</span>
+          <span>{t.title}</span>
         </h3>
-        <p className={`text-xs text-dark/50 mt-1 ${language === 'ar' ? 'font-arabic' : ''}`}>
+        <p className="text-xs text-dark/50 mt-1">
           {t.subtitle}
         </p>
       </div>
@@ -153,33 +151,27 @@ export default function UVSimulator() {
         </div>
       </div>
 
-      {/* Control Switch Panel */}
-      <div className="flex flex-col items-center mt-6">
-        <label className="text-xs font-semibold text-dark/50 uppercase tracking-wider mb-2">
-          {t.switchLabel}
-        </label>
-        
-        {/* Toggle Switch */}
-        <button
-          onClick={() => setUvOn(!uvOn)}
-          className={`relative w-20 h-10 rounded-full p-1 transition-all duration-300 cursor-pointer shadow-md focus:outline-none ${
-            uvOn ? 'bg-purple-600' : 'bg-zinc-300'
-          }`}
-        >
-          {/* Knob */}
-          <motion.div
-            layout
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className={`w-8 h-8 rounded-full shadow-md flex items-center justify-center text-xs font-bold transition-all ${
-              uvOn ? 'bg-white text-purple-600' : 'bg-white text-zinc-400'
-            }`}
-            style={{
-              float: uvOn ? 'right' : 'left',
-            }}
+      {/* Switch Control */}
+      <div className="flex justify-center mt-6">
+        <label className="flex items-center gap-3 cursor-pointer group select-none">
+          <span className="text-sm font-semibold text-dark/70 group-hover:text-primary transition-colors">
+            {t.switchLabel}
+          </span>
+          <div 
+            onClick={() => setUvOn(!uvOn)}
+            className="relative w-14 h-8 bg-zinc-200 group-hover:bg-zinc-300 rounded-full transition-colors flex items-center p-1 shadow-inner"
           >
-            {uvOn ? 'ON' : 'OFF'}
-          </motion.div>
-        </button>
+            <motion.div
+              layout
+              animate={{
+                backgroundColor: uvOn ? '#2D5016' : '#a1a1aa',
+                x: uvOn ? 24 : 0,
+              }}
+              className="w-6 h-6 rounded-full shadow-md"
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </div>
+        </label>
       </div>
     </div>
   );

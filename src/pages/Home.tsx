@@ -1,8 +1,8 @@
 // ============================================================
 // Home — Hero Landing Page
 // ============================================================
-// Stunning hero with gradient mesh, bilingual text selector,
-// interactive UV light simulator, and integrated Capture testing section.
+// Stunning hero with gradient mesh, interactive UV light simulator,
+// and integrated Capture testing section. English-only.
 // ============================================================
 
 import { Link } from 'react-router-dom';
@@ -11,7 +11,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import OliveLogo from '@/components/shared/OliveLogo';
 import UVSimulator from '@/components/shared/UVSimulator';
 import Capture from '@/pages/Capture';
-import { useAnalysisStore } from '@/store/analysisStore';
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -23,29 +22,7 @@ const fadeUp: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
 
-const TRANSLATIONS = {
-  en: {
-    heroTitle: "ZaytounCom",
-    heroSubtitle: "Protecting Palestine's Liquid Gold",
-    heroTagline: "Verify olive oil authenticity and purity instantly using smartphone fluorescence imaging & Azure Custom Vision AI.",
-    startDemoBtn: "Start Live Test",
-    historyBtn: "Scan History",
-    scanToOpen: "Scan to open on smartphone",
-  },
-  ar: {
-    heroTitle: "زيتون كوم",
-    heroSubtitle: "حماية الذهب السائل الفلسطيني",
-    heroTagline: "تحقق من جودة وأصالة زيت الزيتون فوراً باستخدام تصوير الفلورة بالهاتف الذكي والذكاء الاصطناعي من أزور.",
-    startDemoBtn: "ابدأ الفحص الحي",
-    historyBtn: "سجل الفحوصات",
-    scanToOpen: "امسح الرمز لفتحه على الهاتف",
-  }
-};
-
 export default function Home() {
-  const { language } = useAnalysisStore();
-  const text = TRANSLATIONS[language];
-
   return (
     <div className="min-h-screen">
       {/* ── Hero Section ──────────────────────────────────── */}
@@ -61,18 +38,15 @@ export default function Home() {
               variants={container}
               initial="hidden"
               animate="show"
-              className="lg:col-span-7 text-center lg:text-left rtl:lg:text-right flex flex-col justify-center"
+              className="lg:col-span-7 text-center lg:text-left flex flex-col justify-center"
             >
               {/* Brand Logo & Tag */}
               <motion.div variants={fadeUp} className="mb-6 flex justify-center lg:justify-start items-center gap-3">
                 <OliveLogo size={56} />
                 <div>
                   <h1 className="font-display text-4xl sm:text-5xl font-bold text-primary">
-                    {text.heroTitle}
+                    ZaytounCom
                   </h1>
-                  <p className="font-arabic text-sm text-primary/60 -mt-1">
-                    {TRANSLATIONS.ar.heroTitle}
-                  </p>
                 </div>
               </motion.div>
 
@@ -80,14 +54,14 @@ export default function Home() {
                 variants={fadeUp}
                 className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold text-dark-light leading-tight mb-4"
               >
-                {text.heroSubtitle}
+                Protecting Palestine's Liquid Gold
               </motion.h2>
 
               <motion.p
                 variants={fadeUp}
                 className="text-base sm:text-lg text-dark/70 max-w-2xl mb-8 leading-relaxed"
               >
-                {text.heroTagline}
+                Verify olive oil authenticity and purity instantly using smartphone fluorescence imaging & Azure Custom Vision AI.
               </motion.p>
 
               {/* Action Buttons */}
@@ -97,13 +71,13 @@ export default function Home() {
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl gradient-olive text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   <span className="text-xl">🔬</span>
-                  <span>{text.startDemoBtn}</span>
+                  <span>Start Live Test</span>
                 </a>
                 <Link
                   to="/history"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-primary/25 text-primary font-semibold text-base hover:bg-primary/5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
-                  <span>{text.historyBtn}</span>
+                  <span>Scan History</span>
                 </Link>
               </motion.div>
 
@@ -121,8 +95,8 @@ export default function Home() {
                     level="H"
                   />
                 </div>
-                <div className="text-left rtl:text-right">
-                  <p className="text-xs font-semibold text-dark/80">{text.scanToOpen}</p>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-dark/80">Scan to open on smartphone</p>
                   <p className="text-[10px] text-dark/50">Open ZaytounCom on mobile</p>
                 </div>
               </motion.div>
@@ -130,7 +104,7 @@ export default function Home() {
 
             {/* Hero Interactive UVSimulator Graphic */}
             <motion.div
-              initial={{ opacity: 0, x: language === 'ar' ? -50 : 50 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
               className="lg:col-span-5"
@@ -156,7 +130,7 @@ export default function Home() {
         >
           <div className="flex items-center gap-3">
             <OliveLogo size={32} />
-            <div className="text-left rtl:text-right">
+            <div className="text-left">
               <span className="font-display text-base font-bold text-white block">ZaytounCom</span>
               <span className="text-[10px] text-zinc-500">© 2026. All rights reserved.</span>
             </div>
@@ -164,9 +138,6 @@ export default function Home() {
           <div>
             <p className="text-xs mb-1">
               Built with ❤️ for the Azure AI Hackathon
-            </p>
-            <p className="font-arabic text-zinc-500 text-[10px]">
-              صُنع بحب لمسابقة هاكاثون أزور للذكاء الاصطناعي
             </p>
           </div>
         </motion.div>
