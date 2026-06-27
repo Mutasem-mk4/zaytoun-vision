@@ -25,7 +25,7 @@ const fadeUp: Variants = {
 
 const TRANSLATIONS = {
   en: {
-    heroTitle: "Zaytoun Vision",
+    heroTitle: "ZaytounCom",
     heroSubtitle: "Protecting Palestine's Liquid Gold",
     heroTagline: "Verify olive oil authenticity and purity instantly using smartphone fluorescence imaging & Azure Custom Vision AI.",
     startDemoBtn: "Start Live Test",
@@ -33,7 +33,7 @@ const TRANSLATIONS = {
     scanToOpen: "Scan to open on smartphone",
   },
   ar: {
-    heroTitle: "زيتون فيجن",
+    heroTitle: "زيتون كوم",
     heroSubtitle: "حماية الذهب السائل الفلسطيني",
     heroTagline: "تحقق من جودة وأصالة زيت الزيتون فوراً باستخدام تصوير الفلورة بالهاتف الذكي والذكاء الاصطناعي من أزور.",
     startDemoBtn: "ابدأ الفحص الحي",
@@ -123,7 +123,7 @@ export default function Home() {
                 </div>
                 <div className="text-left rtl:text-right">
                   <p className="text-xs font-semibold text-dark/80">{text.scanToOpen}</p>
-                  <p className="text-[10px] text-dark/50">Open Zaytoun Vision on mobile</p>
+                  <p className="text-[10px] text-dark/50">Open ZaytounCom on mobile</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -157,7 +157,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <OliveLogo size={32} />
             <div className="text-left rtl:text-right">
-              <span className="font-display text-base font-bold text-white block">Zaytoun Vision</span>
+              <span className="font-display text-base font-bold text-white block">ZaytounCom</span>
               <span className="text-[10px] text-zinc-500">© 2026. All rights reserved.</span>
             </div>
           </div>

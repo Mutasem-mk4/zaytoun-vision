@@ -87,9 +87,9 @@ export default function Certificate() {
             <div className="text-center mb-10">
               <OliveLogo size={48} className="mx-auto mb-4" animate={false} />
               <h2 className="font-display text-2xl sm:text-3xl font-bold text-primary mb-1">
-                Zaytoun Vision
+                ZaytounCom
               </h2>
-              <p className="font-arabic text-lg text-accent">زيتون فيجن</p>
+              <p className="font-arabic text-lg text-accent">زيتون كوم</p>
               <div className="mt-4 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
             </div>
 

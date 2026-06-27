@@ -46,10 +46,10 @@ export default function Navbar() {
               <OliveLogo size={36} animate={false} />
               <div className="flex flex-col leading-tight">
                 <span className="font-display text-lg font-bold text-primary group-hover:text-accent transition-colors">
-                  Zaytoun Vision
+                  ZaytounCom
                 </span>
                 <span className="font-arabic text-[10px] text-primary/60 -mt-0.5">
-                  زيتون فيجن
+                  زيتون كوم
                 </span>
               </div>
             </NavLink>
@@ -205,8 +205,8 @@ export default function Navbar() {
                 {/* Bottom branding */}
                 <div className="mt-auto pb-8 text-center">
                   <OliveLogo size={28} animate={false} className="mx-auto mb-2" />
-                  <p className="text-xs text-dark/40">Zaytoun Vision v1.0</p>
-                  <p className="font-arabic text-xs text-dark/30">زيتون فيجن</p>
+                  <p className="text-xs text-dark/40">ZaytounCom v1.0</p>
+                  <p className="font-arabic text-xs text-dark/30">زيتون كوم</p>
                 </div>
               </div>
             </motion.div>
