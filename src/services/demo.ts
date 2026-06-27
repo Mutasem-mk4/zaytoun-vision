@@ -42,13 +42,33 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     icon: '🫒',
     result: {
       id: generateId(),
-      purityScore: 97,
+      purityScore: 90,
       adulterantDetected: null,
       confidence: 0.96,
-      tags: ['pure_evoo', 'high_chlorophyll', 'optimal_oxidation'],
+      tags: ['fresh_evoo', 'high_red_chlorophyll', 'low_blue_oxidation'],
       timestamp: new Date().toISOString(),
       status: 'pure',
       sampleName: 'Nablus Premium EVOO',
+      authenticityScore: 96,
+      fakeProbability: 4,
+      freshnessScore: 94,
+      evooScore: 90,
+      estimatedAgingStep: 0,
+      agingConfidence: 70,
+      category: 'fresh_evoo',
+      verdict: 'Fresh EVOO-like',
+      uvFingerprint: {
+        redChlorophyll: 850,
+        greenBiologicalBaseline: 350,
+        blueOxidation: 50,
+        redBlueRatio: 17,
+        greenBlueRatio: 7,
+      },
+      qualityFlags: [],
+      scientificExplanation: 'The red chlorophyll signal is strong, the green biological baseline is present, and blue oxidation is low.',
+      referenceComparison: { distanceFromAgingStep0: 3 },
+      calibration: { isCalibrated: false, expectedPhoneToLabErrorPct: 25, expectedAgingStepError: 2 },
+      absorptionNote: 'K232, K268, and deltaK are lab absorption metrics and cannot be directly measured from one phone fluorescence photo.',
     },
   },
   {
@@ -61,13 +81,33 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     icon: '⚠️',
     result: {
       id: generateId(),
-      purityScore: 61,
-      adulterantDetected: 'Hazelnut oil traces',
+      purityScore: 37,
+      adulterantDetected: null,
       confidence: 0.82,
-      tags: ['light_adulteration', 'hazelnut_traces', 'reduced_chlorophyll'],
+      tags: ['real_but_aged', 'reduced_red_chlorophyll', 'higher_blue_oxidation'],
       timestamp: new Date().toISOString(),
       status: 'warning',
       sampleName: 'Market Sample B',
+      authenticityScore: 78,
+      fakeProbability: 22,
+      freshnessScore: 48,
+      evooScore: 37,
+      estimatedAgingStep: 5,
+      agingConfidence: 68,
+      category: 'real_but_aged',
+      verdict: 'Real Olive Oil, Not Fresh Enough for EVOO',
+      uvFingerprint: {
+        redChlorophyll: 400,
+        greenBiologicalBaseline: 110,
+        blueOxidation: 450,
+        redBlueRatio: 0.89,
+        greenBlueRatio: 0.24,
+      },
+      qualityFlags: [],
+      scientificExplanation: 'The sample keeps an olive-oil UV identity, but blue oxidation is elevated and freshness is below a fresh EVOO-like profile.',
+      referenceComparison: { distanceFromAgingStep0: 52 },
+      calibration: { isCalibrated: false, expectedPhoneToLabErrorPct: 25, expectedAgingStepError: 2 },
+      absorptionNote: 'K232, K268, and deltaK are lab absorption metrics and cannot be directly measured from one phone fluorescence photo.',
     },
   },
   {
@@ -80,13 +120,33 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     icon: '🚨',
     result: {
       id: generateId(),
-      purityScore: 28,
-      adulterantDetected: 'Soybean oil',
+      purityScore: 12,
+      adulterantDetected: 'Refined or seed-oil UV signature',
       confidence: 0.94,
-      tags: ['heavy_adulteration', 'soybean_detected', 'low_chlorophyll', 'high_oxidation'],
+      tags: ['fake_or_refined', 'near_flat_green_baseline', 'high_blue_oxidation'],
       timestamp: new Date().toISOString(),
       status: 'adulterated',
       sampleName: 'Unknown Batch X-47',
+      authenticityScore: 12,
+      fakeProbability: 88,
+      freshnessScore: null,
+      evooScore: null,
+      estimatedAgingStep: null,
+      agingConfidence: null,
+      category: 'fake_or_refined',
+      verdict: 'Likely Fake or Refined',
+      uvFingerprint: {
+        redChlorophyll: 20,
+        greenBiologicalBaseline: 4,
+        blueOxidation: 850,
+        redBlueRatio: 0.02,
+        greenBlueRatio: 0.005,
+      },
+      qualityFlags: [],
+      scientificExplanation: 'The UV fingerprint has weak red chlorophyll, strong blue emission, and a near-flat green biological baseline.',
+      referenceComparison: { distanceFromAgingStep0: null },
+      calibration: { isCalibrated: false, expectedPhoneToLabErrorPct: 25, expectedAgingStepError: 2 },
+      absorptionNote: 'K232, K268, and deltaK are lab absorption metrics and cannot be directly measured from one phone fluorescence photo.',
     },
   },
 ];
@@ -94,19 +154,17 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
 /** Oil breakdown for each demo scenario */
 export const DEMO_OIL_BREAKDOWNS: Record<string, OilBreakdown[]> = {
   'nablus-premium': [
-    { type: 'Extra Virgin Olive Oil', percentage: 97, color: '#4A7C59' },
-    { type: 'Natural Variation', percentage: 3, color: '#8fbc8f' },
+    { type: 'Fresh EVOO-like signal', percentage: 90, color: '#4A7C59' },
+    { type: 'Natural variation', percentage: 10, color: '#8fbc8f' },
   ],
   'market-sample-b': [
-    { type: 'Olive Oil', percentage: 61, color: '#4A7C59' },
-    { type: 'Hazelnut Oil', percentage: 24, color: '#D4843A' },
-    { type: 'Unknown Compounds', percentage: 15, color: '#9CA3AF' },
+    { type: 'Fresh EVOO-like signal', percentage: 37, color: '#4A7C59' },
+    { type: 'Aged olive-oil signal', percentage: 41, color: '#D4843A' },
+    { type: 'Uncertain or non-olive signal', percentage: 22, color: '#9CA3AF' },
   ],
   'unknown-batch': [
-    { type: 'Olive Oil', percentage: 28, color: '#4A7C59' },
-    { type: 'Soybean Oil', percentage: 52, color: '#B33A3A' },
-    { type: 'Corn Oil', percentage: 13, color: '#D4843A' },
-    { type: 'Unknown Compounds', percentage: 7, color: '#9CA3AF' },
+    { type: 'Fake or refined UV signature', percentage: 88, color: '#B33A3A' },
+    { type: 'Residual olive-like signal', percentage: 12, color: '#9CA3AF' },
   ],
 };
 
@@ -149,25 +207,83 @@ export function mockAnalyzeImage(imageDataUrl: string, sampleName?: string): Ana
   let adulterantDetected: string | null;
   let confidence: number;
   let tags: string[];
+  let authenticityScore: number;
+  let fakeProbability: number;
+  let freshnessScore: number | null;
+  let evooScore: number | null;
+  let estimatedAgingStep: number | null;
+  let agingConfidence: number | null;
+  let category: AnalysisResult['category'];
+  let verdict: string;
+  let uvFingerprint: NonNullable<AnalysisResult['uvFingerprint']>;
+  let scientificExplanation: string;
 
   if (brightness > 0.6) {
-    purityScore = 75 + Math.floor(Math.random() * 20);
+    authenticityScore = 90 + Math.floor(Math.random() * 8);
+    fakeProbability = 100 - authenticityScore;
+    freshnessScore = 84 + Math.floor(Math.random() * 12);
+    evooScore = Math.round(authenticityScore * freshnessScore / 100);
+    purityScore = evooScore;
     status = 'pure';
     adulterantDetected = null;
     confidence = 0.85 + Math.random() * 0.1;
-    tags = ['pure_evoo', 'good_chlorophyll'];
+    tags = ['fresh_evoo', 'good_red_chlorophyll'];
+    estimatedAgingStep = 0;
+    agingConfidence = 70;
+    category = 'fresh_evoo';
+    verdict = 'Fresh EVOO-like';
+    uvFingerprint = {
+      redChlorophyll: 820,
+      greenBiologicalBaseline: 310,
+      blueOxidation: 70,
+      redBlueRatio: 11.7,
+      greenBlueRatio: 4.4,
+    };
+    scientificExplanation = 'The red chlorophyll signal is strong, the green biological baseline is present, and blue oxidation is low.';
   } else if (brightness > 0.35) {
-    purityScore = 45 + Math.floor(Math.random() * 25);
+    authenticityScore = 68 + Math.floor(Math.random() * 18);
+    fakeProbability = 100 - authenticityScore;
+    freshnessScore = 35 + Math.floor(Math.random() * 25);
+    evooScore = Math.round(authenticityScore * freshnessScore / 100);
+    purityScore = evooScore;
     status = 'warning';
-    adulterantDetected = 'Possible seed oil traces';
+    adulterantDetected = null;
     confidence = 0.7 + Math.random() * 0.15;
-    tags = ['light_adulteration', 'reduced_chlorophyll'];
+    tags = ['real_but_aged', 'reduced_chlorophyll'];
+    estimatedAgingStep = 5;
+    agingConfidence = 66;
+    category = 'real_but_aged';
+    verdict = 'Real Olive Oil, Not Fresh Enough for EVOO';
+    uvFingerprint = {
+      redChlorophyll: 360,
+      greenBiologicalBaseline: 100,
+      blueOxidation: 420,
+      redBlueRatio: 0.86,
+      greenBlueRatio: 0.24,
+    };
+    scientificExplanation = 'The sample keeps an olive-oil UV identity, but the freshness score is below a fresh EVOO-like profile.';
   } else {
-    purityScore = 15 + Math.floor(Math.random() * 25);
+    authenticityScore = 8 + Math.floor(Math.random() * 12);
+    fakeProbability = 100 - authenticityScore;
+    freshnessScore = null;
+    evooScore = null;
+    purityScore = authenticityScore;
     status = 'adulterated';
-    adulterantDetected = 'Soybean or corn oil detected';
+    adulterantDetected = 'Refined or seed-oil UV signature';
     confidence = 0.8 + Math.random() * 0.15;
-    tags = ['heavy_adulteration', 'low_chlorophyll', 'high_oxidation'];
+    tags = ['fake_or_refined', 'low_chlorophyll', 'high_oxidation'];
+    estimatedAgingStep = null;
+    agingConfidence = null;
+    category = 'fake_or_refined';
+    verdict = 'Likely Fake or Refined';
+    uvFingerprint = {
+      redChlorophyll: 20,
+      greenBiologicalBaseline: 5,
+      blueOxidation: 820,
+      redBlueRatio: 0.02,
+      greenBlueRatio: 0.006,
+    };
+    scientificExplanation = 'The UV fingerprint has weak red chlorophyll, strong blue emission, and a near-flat green biological baseline.';
   }
 
   return {
@@ -180,6 +296,20 @@ export function mockAnalyzeImage(imageDataUrl: string, sampleName?: string): Ana
     status,
     sampleName: sampleName || 'Camera Capture',
     imageUrl: imageDataUrl,
+    authenticityScore,
+    fakeProbability,
+    freshnessScore,
+    evooScore,
+    estimatedAgingStep,
+    agingConfidence,
+    category,
+    verdict,
+    uvFingerprint,
+    qualityFlags: [],
+    scientificExplanation,
+    referenceComparison: { distanceFromAgingStep0: estimatedAgingStep === null ? null : Math.round((estimatedAgingStep / 9) * 100) },
+    calibration: { isCalibrated: false, expectedPhoneToLabErrorPct: 25, expectedAgingStepError: 2 },
+    absorptionNote: 'K232, K268, and deltaK are lab absorption metrics and cannot be directly measured from one phone fluorescence photo.',
   };
 }
 

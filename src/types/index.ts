@@ -8,6 +8,65 @@
 /** Analysis status based on purity thresholds */
 export type AnalysisStatus = 'pure' | 'warning' | 'adulterated';
 
+export type AnalysisCategory =
+  | 'fresh_evoo'
+  | 'real_but_aged'
+  | 'expired_olive_oil'
+  | 'fake_or_refined'
+  | 'invalid_image';
+
+export interface UVFingerprint {
+  redChlorophyll: number;
+  greenBiologicalBaseline: number;
+  blueOxidation: number;
+  redBlueRatio: number;
+  greenBlueRatio: number;
+}
+
+export interface DecisionTrace {
+  rule: string;
+  qualityGatePassed: boolean;
+  qualityFlags: string[];
+  signals: {
+    redDetected: boolean;
+    greenBaselinePresent: boolean;
+    blueDominant: boolean;
+    redWeak: boolean;
+  };
+  scores: {
+    redPresenceScore?: number;
+    greenPresenceScore?: number;
+    authenticityScore?: number;
+    fakeProbability?: number;
+    freshnessScore?: number | null;
+  };
+  channelFractions: {
+    redFraction?: number;
+    greenFraction?: number;
+    blueFraction?: number;
+  };
+  notes: string[];
+}
+
+export interface PhotoSetup {
+  validForAnalysis: boolean;
+  setupScore: number;
+  category:
+    | 'valid_dark_uv_oil'
+    | 'recovered_dark_uv_oil'
+    | 'daylight_or_stock_photo'
+    | 'glare_or_reflection'
+    | 'wrong_crop'
+    | 'no_liquid_detected'
+    | 'blurry_or_saturated';
+  enhancementAttempted: boolean;
+  enhancementApplied: boolean;
+  enhancementMethod?: 'mask_only_no_color_transform' | null;
+  recoveryLimitReason?: string | null;
+  reasons: string[];
+  retakeInstructions: string[];
+}
+
 /** Result from Azure Custom Vision analysis */
 export interface AnalysisResult {
   /** Unique analysis identifier (UUID) */
@@ -28,6 +87,47 @@ export interface AnalysisResult {
   sampleName?: string;
   /** Azure Blob Storage URL of the sample image */
   imageUrl?: string;
+  /** Real olive-oil likelihood from the UV fingerprint, 0-100 */
+  authenticityScore?: number;
+  /** Refined or seed-oil likelihood, 0-100 */
+  fakeProbability?: number;
+  /** Freshness score, only meaningful for authentic olive oil */
+  freshnessScore?: number | null;
+  /** Combined authenticity and freshness score */
+  evooScore?: number | null;
+  /** Closest Swiss aging dataset step, 0 fresh through 9 oxidized */
+  estimatedAgingStep?: number | null;
+  /** Confidence in the aging-step estimate, 0-100 */
+  agingConfidence?: number | null;
+  /** Scientific category from the UV screening engine */
+  category?: AnalysisCategory;
+  /** Display verdict for the report */
+  verdict?: string;
+  /** Red, green, and blue UV emission proxies */
+  uvFingerprint?: UVFingerprint;
+  /** Image quality warnings from the dark-room UV pipeline */
+  qualityFlags?: string[];
+  /** Stage 0 photo setup/recovery result */
+  photoSetup?: PhotoSetup;
+  /** Human-readable and machine-readable decision path */
+  decisionTrace?: DecisionTrace;
+  /** Human-readable scientific reasoning */
+  scientificExplanation?: string;
+  /** Reference-dataset comparison details */
+  referenceComparison?: {
+    distanceFromAgingStep0?: number | null;
+    closestReference?: unknown;
+    step0Reference?: unknown;
+    step9Reference?: unknown;
+  };
+  /** Phone-to-lab calibration metadata */
+  calibration?: {
+    isCalibrated: boolean;
+    expectedPhoneToLabErrorPct?: number;
+    expectedAgingStepError?: number;
+  };
+  /** Absorption limitation note */
+  absorptionNote?: string;
 }
 
 /** Request body for POST /api/analyze */

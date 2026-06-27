@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "isCalibrated": false,
+  "countsScale": 1000,
+  "expectedPhoneToLabErrorPct": 25,
+  "expectedAgingStepError": 2.0,
+  "greenBaselineCutoffCounts": 35,
+  "greenBaselineRatioCutoff": 0.08,
+  "blueDominanceFraction": 0.45,
+  "redWeakFraction": 0.22,
+  "glareBlueEdgeCenterRatio": 1.7,
+  "maxSaturatedPixelFraction": 0.18,
+  "maxDarkRoomBorderMean": 45,
+  "maxDarkRoomBorderBrightFraction": 0.12,
+  "redSurfaceHotspotRatio": 1.6,
+  "minRecoverySetupScore": 58,
+  "notes": [
+    "Default thresholds are conservative placeholders until real phone images are calibrated.",
+    "Do not present this as lab certification unless calibrated with validated samples."
+  ]
+}

@@ -1,0 +1,44 @@
+Advanced Reads Report
+
+Report time                      ,6/23/2021 11:05:17 AM                                                              ,
+Method                           ,C:\Users\Admin\Desktop\ARES\Default_ARES_Method.MA                                 ,
+                                 ,B                                                                                  ,
+Batch name                       ,C:\Users\Admin\Desktop\ARES\AS5\20210623_1051_AS5_                                 ,
+                                 ,D0F1I2K2N2Q0.BAB                                                                   ,
+Application                      ,Advanced Reads 4.20(468)                                                           ,
+Operator                         ,                                                                                   ,
+
+Instrument Settings
+Instrument                       ,Cary 300                                                                           ,
+Instrument version no.           ,12.00                                                                              ,
+Wavelength (nm)                  ,232.00, 264.00, 268.00, 272.00                                                     ,
+Ordinate Mode                    ,Abs                                                                                ,
+SBW (nm)                         ,2.0                                                                                ,
+Ave Time (sec)                   ,0.500                                                                              ,
+Beam mode                        ,Double auto select                                                                 ,
+Beam interchange                 ,Normal                                                                             ,
+Replicates                       ,1                                                                                  ,
+Sample averaging                 ,OFF                                                                                ,
+Cell changer                     ,ON                                                                                 ,
+Temperature (°C)                 ,22.0                                                                               ,
+
+
+Comments:
+
+Analysis
+Collection time                  ,6/23/2021 10:51:35 AM                                                              ,
+ReCalculation Time               ,6/23/2021 11:05:17 AM                                                              ,
+
+       Sample        , F  ,Abs(232.00) ,    Abs(264.00) ,    Abs(268.00) ,    Abs(272.00) ,
+___________________________________________________________________________________________
+D0                   ,    ,     2.2544 ,         0.2122 ,         0.2220 ,         0.2211 ,
+F1                   ,    ,     1.9154 ,         0.1603 ,         0.1516 ,         0.1435 ,
+I2                   ,    ,     2.2184 ,         0.1499 ,         0.1508 ,         0.1477 ,
+K2                   ,    ,     1.9836 ,         0.1688 ,         0.1641 ,         0.1580 ,
+N2                   ,    ,     2.0395 ,         0.1098 ,         0.1038 ,         0.0976 ,
+Q0                   ,    ,     1.9047 ,         0.0930 ,         0.0883 ,         0.0844 ,
+
+Results Flags Legend
+R = Repeat reading             ,                                                                                 ,
+
+

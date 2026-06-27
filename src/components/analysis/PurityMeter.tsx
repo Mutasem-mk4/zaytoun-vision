@@ -20,6 +20,10 @@ interface PurityMeterProps {
   shouldAnimate?: boolean;
   /** Size of the gauge in pixels */
   size?: number;
+  /** Center label for the gauge */
+  label?: string;
+  /** Optional secondary label */
+  sublabel?: string;
   className?: string;
 }
 
@@ -31,7 +35,7 @@ function getScoreColors(score: number) {
       glow: '0 0 60px rgba(74, 124, 89, 0.4)',
       glowInner: '0 0 30px rgba(74, 124, 89, 0.2)',
       bg: 'rgba(74, 124, 89, 0.08)',
-      label: 'Excellent Purity',
+      label: 'Strong EVOO Profile',
       labelAr: 'نقاء ممتاز',
     };
   }
@@ -41,7 +45,7 @@ function getScoreColors(score: number) {
       glow: '0 0 60px rgba(212, 132, 58, 0.4)',
       glowInner: '0 0 30px rgba(212, 132, 58, 0.2)',
       bg: 'rgba(212, 132, 58, 0.08)',
-      label: 'Possible Adulteration',
+      label: 'Needs Review',
       labelAr: 'احتمال غش',
     };
   }
@@ -50,7 +54,7 @@ function getScoreColors(score: number) {
     glow: '0 0 60px rgba(179, 58, 58, 0.4)',
     glowInner: '0 0 30px rgba(179, 58, 58, 0.2)',
     bg: 'rgba(179, 58, 58, 0.08)',
-    label: 'Adulteration Detected',
+    label: 'Low EVOO Signal',
     labelAr: 'تم كشف الغش',
   };
 }
@@ -60,6 +64,8 @@ export default function PurityMeter({
   status,
   shouldAnimate = true,
   size = 280,
+  label = 'Purity Score',
+  sublabel = 'UV screening',
   className = '',
 }: PurityMeterProps) {
   const colors = getScoreColors(score);
@@ -203,9 +209,10 @@ export default function PurityMeter({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
+            aria-label={sublabel}
             className="text-xs font-medium text-dark/50 mt-1"
           >
-            Purity Score
+            {label}
           </motion.span>
           <motion.span
             initial={{ opacity: 0 }}

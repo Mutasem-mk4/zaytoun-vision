@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { useAnalysisStore } from '@/store/analysisStore';
 import PurityMeter from '@/components/analysis/PurityMeter';
+import ScientificReportCard from '@/components/analysis/ScientificReportCard';
 import ResultCard from '@/components/analysis/ResultCard';
 import AdultMap from '@/components/analysis/AdultMap';
 
@@ -86,9 +87,17 @@ export default function Results() {
 
   if (!currentResult) return null;
 
+  const primaryScore = currentResult.evooScore ?? currentResult.authenticityScore ?? currentResult.purityScore;
+  const primaryLabel =
+    currentResult.evooScore !== null && currentResult.evooScore !== undefined
+      ? 'EVOO Score'
+      : currentResult.category === 'fake_or_refined'
+        ? 'Authenticity'
+        : 'UV Score';
+
   return (
     <div className="min-h-screen gradient-mesh px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <motion.div variants={stagger} initial="hidden" animate="show">
           {/* Page Header */}
           <motion.div variants={fadeUp} className="text-center mb-10">
@@ -100,7 +109,7 @@ export default function Results() {
 
           {/* Pure check animation */}
           <AnimatePresence>
-            {currentResult.status === 'pure' && (
+            {currentResult.category === 'fresh_evoo' && (
               <motion.div variants={fadeUp} className="mb-6">
                 <PureCheckAnimation />
               </motion.div>
@@ -110,11 +119,17 @@ export default function Results() {
           {/* Purity Meter — Hero */}
           <motion.div variants={fadeUp} className="flex justify-center mb-12">
             <PurityMeter
-              score={currentResult.purityScore}
+              score={primaryScore}
               status={currentResult.status}
               shouldAnimate
               size={280}
+              label={primaryLabel}
+              sublabel="UV screening"
             />
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="mb-8">
+            <ScientificReportCard result={currentResult} />
           </motion.div>
 
           {/* Result Card */}

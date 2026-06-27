@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from uv_analysis import analyze_uv_sample, load_reference_cache
 
 class AnalyzeRequest(BaseModel):
     imageUrl: str
@@ -310,7 +311,28 @@ def smart_predict(features: dict) -> dict:
 # ---------------------------------------------------------------------------
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "model": "loaded" if os.path.exists(MODEL_PATH) else "not found"}
+    cache = load_reference_cache()
+    return {
+        "status": "ok",
+        "model": "loaded" if os.path.exists(MODEL_PATH) else "not found",
+        "referenceLoaded": cache["referenceLoaded"],
+        "calibrationLoaded": cache["calibrationLoaded"],
+    }
+
+@app.get("/api/reference-summary")
+async def reference_summary():
+    cache = load_reference_cache()
+    reference = cache["reference"]
+    steps = reference.get("steps", {}) if reference else {}
+    return {
+        "referenceLoaded": cache["referenceLoaded"],
+        "calibrationLoaded": cache["calibrationLoaded"],
+        "recordCounts": reference.get("recordCounts", {}) if reference else {},
+        "steps": sorted(int(step) for step in steps.keys()),
+        "step0Loaded": "0" in steps,
+        "step9Loaded": "9" in steps,
+        "notes": reference.get("notes", []) if reference else [],
+    }
 
 @app.get("/api/history")
 async def history_api():
@@ -361,17 +383,7 @@ async def analyze_api(req: AnalyzeRequest):
         raise HTTPException(status_code=400, detail="Could not decode image.")
 
     try:
-        img = preprocess(img)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Preprocessing failed: {exc}")
-
-    try:
-        features = extract_features(img)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Feature extraction failed: {exc}")
-
-    try:
-        prediction = smart_predict(features)
+        prediction = analyze_uv_sample(img, req.sampleName)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}")
 
@@ -380,13 +392,13 @@ async def analyze_api(req: AnalyzeRequest):
     try:
         save_prediction(
             filename=req.sampleName,
-            label=prediction['label'],
-            confidence=prediction['confidence'],
-            purity_score=prediction['purity_score'],
-            adulteration_pct=prediction['adulteration_pct'],
-            risk_level=prediction['risk_level'],
-            fluorescence_intensity=prediction['fluorescence_intensity'],
-            recommendation=prediction['recommendation'],
+            label=prediction["category"],
+            confidence=prediction["confidence"],
+            purity_score=prediction["purityScore"],
+            adulteration_pct=prediction["fakeProbability"],
+            risk_level=prediction["status"],
+            fluorescence_intensity=prediction["fluorescence_intensity"],
+            recommendation=prediction["recommendation"],
             timestamp=timestamp,
         )
     except Exception as exc:
@@ -404,24 +416,15 @@ async def analyze_api(req: AnalyzeRequest):
         logger.warning(f"Failed to get database ID: {exc}")
 
     response_data = {
+        **prediction,
         "id": pred_id,
-        "purityScore": prediction['purity_score'],
-        "purity_score": prediction['purity_score'],
-        "adulterantDetected": "Soybean Oil (suspected)" if prediction['label'] != 'pure' else None,
-        "adulterant_detected": "Soybean Oil (suspected)" if prediction['label'] != 'pure' else None,
-        "confidence": prediction['confidence'],
-        "tags": [prediction['label'], f"intensity_{prediction['fluorescence_intensity']}"],
         "timestamp": timestamp,
-        "status": 'pure' if prediction['purity_score'] >= 85 else 'warning' if prediction['purity_score'] >= 50 else 'adulterated',
-        "label": prediction['label'],
         "sampleName": req.sampleName,
         "sample_name": req.sampleName,
         "imageUrl": req.imageUrl,
         "image_url": req.imageUrl,
-        "adulteration_pct": prediction['adulteration_pct'],
-        "risk_level": prediction['risk_level'],
-        "fluorescence_intensity": prediction['fluorescence_intensity'],
-        "recommendation": prediction['recommendation'],
+        "adulteration_pct": prediction["fakeProbability"],
+        "risk_level": prediction["status"],
     }
     return JSONResponse(content=response_data)
 
