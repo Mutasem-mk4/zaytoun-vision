@@ -20,9 +20,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', labelAr: 'الرئيسية' },
-  { to: '/capture', label: 'Capture', labelAr: 'التقاط' },
   { to: '/history', label: 'History', labelAr: 'السجل' },
-  { to: '/architecture', label: 'Architecture', labelAr: 'البنية' },
 ];
 
 export default function Navbar() {

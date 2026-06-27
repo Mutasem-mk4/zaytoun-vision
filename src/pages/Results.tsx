@@ -157,7 +157,7 @@ export default function Results() {
               Generate Certificate
             </Link>
             <Link
-              to="/capture"
+              to="/"
               onClick={() => clearResult()}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border-2 border-primary/20 text-primary font-semibold text-base hover:bg-primary/5 transition-all hover:scale-105 active:scale-95"
             >
