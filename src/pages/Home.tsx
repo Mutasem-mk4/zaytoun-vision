@@ -2,7 +2,7 @@
 // Home — Hero Landing Page
 // ============================================================
 // Stunning hero with gradient mesh, bilingual text selector,
-// and interactive UV light simulator.
+// interactive UV light simulator, and integrated Capture testing section.
 // ============================================================
 
 import { Link } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { motion, type Variants } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import OliveLogo from '@/components/shared/OliveLogo';
 import UVSimulator from '@/components/shared/UVSimulator';
+import Capture from '@/pages/Capture';
 import { useAnalysisStore } from '@/store/analysisStore';
 
 const container: Variants = {
@@ -28,7 +29,7 @@ const TRANSLATIONS = {
     heroSubtitle: "Protecting Palestine's Liquid Gold",
     heroTagline: "Verify olive oil authenticity and purity instantly using smartphone fluorescence imaging & Azure Custom Vision AI.",
     startDemoBtn: "Start Live Test",
-    learnMoreBtn: "Learn More",
+    historyBtn: "Scan History",
     scanToOpen: "Scan to open on smartphone",
   },
   ar: {
@@ -36,7 +37,7 @@ const TRANSLATIONS = {
     heroSubtitle: "حماية الذهب السائل الفلسطيني",
     heroTagline: "تحقق من جودة وأصالة زيت الزيتون فوراً باستخدام تصوير الفلورة بالهاتف الذكي والذكاء الاصطناعي من أزور.",
     startDemoBtn: "ابدأ الفحص الحي",
-    learnMoreBtn: "اقرأ المزيد",
+    historyBtn: "سجل الفحوصات",
     scanToOpen: "امسح الرمز لفتحه على الهاتف",
   }
 };
@@ -91,18 +92,18 @@ export default function Home() {
 
               {/* Action Buttons */}
               <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
-                <Link
-                  to="/capture"
+                <a
+                  href="#capture-section"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl gradient-olive text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   <span className="text-xl">🔬</span>
                   <span>{text.startDemoBtn}</span>
-                </Link>
+                </a>
                 <Link
-                  to="/capture"
+                  to="/history"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-primary/25 text-primary font-semibold text-base hover:bg-primary/5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
-                  <span>{text.learnMoreBtn}</span>
+                  <span>{text.historyBtn}</span>
                 </Link>
               </motion.div>
 
@@ -138,6 +139,11 @@ export default function Home() {
             </motion.div>
           </div>
         </div>
+      </section>
+
+      {/* ── Capture Section ────────────────────────────────── */}
+      <section id="capture-section" className="py-12 border-t border-dark/5 bg-surface-warm/20">
+        <Capture />
       </section>
 
       {/* ── Footer CTA ────────────────────────────────────── */}
